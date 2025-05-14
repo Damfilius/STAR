@@ -4,6 +4,7 @@
 #include "ErrorWarning.h"
 #include SAMTOOLS_BGZF_H
 
+//! CYCLES OVER READS AND MAPS THEM
 void ReadAlignChunk::mapChunk() {//map one chunk. Input reads stream has to be setup in RA->readInStream[ii]
     
     for (uint32 im=0; im<1; im++) {//hardcoded mate 1 5p onyl for now
@@ -12,16 +13,15 @@ void ReadAlignChunk::mapChunk() {//map one chunk. Input reads stream has to be s
     
     RA->statsRA.resetN();
 
-    for (uint ii=0;ii<P.readNends;ii++) {//clear eof and rewind the input streams
+    for (uint ii=0; ii<P.readNends; ii++) {//clear eof and rewind the input streams
         RA->readInStream[ii]->clear();
         RA->readInStream[ii]->seekg(0,ios::beg);
     };
     
-    
 
-    if ( P.outSAMorder == "PairedKeepInputOrder" && P.runThreadN>1 ) {//open chunk file
+    if ( P.outSAMorder == "PairedKeepInputOrder" && P.runThreadN > 1 ) {//open chunk file
         ostringstream name1("");
-        name1 << P.outFileTmp + "/Aligned.tmp.sam.chunk"<<iChunkIn;
+        name1 << P.outFileTmp + "/Aligned.tmp.sam.chunk" << iChunkIn;
         chunkOutBAMfileName = name1.str();
         chunkOutBAMfile.open(chunkOutBAMfileName.c_str());
     };

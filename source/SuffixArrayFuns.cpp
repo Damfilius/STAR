@@ -7,6 +7,17 @@ inline uint medianUint2(uint a, uint b)
     return a/2 + b/2 + (a%2 + b%2)/2;
 };
 
+
+/*
+mapGen - map-to-genome structure
+s2 - read
+S - position from which to start mapping the piece
+N - length of the piece we are trying to map
+L - length of the string we are searching for in the pre-index
+iSA - starting position in the SA
+dirR - direction of search of read sequence (either left or right)
+compRes - 
+*/
 uint compareSeqToGenome(Genome &mapGen, char** s2, uint S, uint N, uint L, uint iSA, bool dirR, bool& compRes)
 {
     /* compare s to g, find the maximum identity length
@@ -17,25 +28,26 @@ uint compareSeqToGenome(Genome &mapGen, char** s2, uint S, uint N, uint L, uint 
 
     register int64 ii;
 
+    /*
+    ! queries the string from the SA
+    ! checks if the string is from sense or the anti-sense
+    */
     uint SAstr=mapGen.SA[iSA];
-    bool dirG = (SAstr>>mapGen.GstrandBit) == 0; //forward or reverse strand of the genome
+    bool dirG = (SAstr >> mapGen.GstrandBit) == 0; //forward or reverse strand of the genome
     SAstr &= mapGen.GstrandMask;
 
-    char *g=mapGen.G;
+    char *g = mapGen.G;
 
-    if (dirR && dirG) {//forward on read, forward on genome
+    if (dirR && dirG) { //forward on read, forward on genome
         char* s  = s2[0] + S + L;
         g += SAstr + L;
-        for (ii=0;(uint) ii < N-L; ii++)
+        for (ii=0; (uint) ii < N-L; ii++) // iterating over the extension (beyond the pre-indexable string length)
         {
-            if (s[ii]!=g[ii])
-            {
-                if (s[ii]>g[ii])
-                {
+            if (s[ii] != g[ii]) { // check if the corresponding bases btw the read and the genome are not the same
+                if (s[ii] > g[ii]) {
                     compRes=true;
-                    return ii+L;
-                } else
-                {
+                    return ii + L; // length of the piece we have managed to map until we encountered this mismatch
+                } else {
                     compRes=false;
                     return ii+L;
                 };
@@ -43,62 +55,52 @@ uint compareSeqToGenome(Genome &mapGen, char** s2, uint S, uint N, uint L, uint 
         };
 //         if (s[ii]>g[ii]) {compRes=true;} else {compRes=false;};
         return N; //exact match
-    } else if (dirR && !dirG) {
+
+    } else if (dirR && !dirG) { // forward on read, backward on genome
         char* s  = s2[1] + S + L;
-        g += mapGen.nGenome-1-SAstr - L;
-        for (ii=0; (uint) ii < N-L; ii++)
-        {
-            if (s[ii]!=g[-ii])
-            {
-                if (s[ii]>g[-ii] || g[-ii]>3)
-                {
+        g += mapGen.nGenome-1-SAstr-L;
+        for (ii=0; (uint) ii < N-L; ii++) {
+            if (s[ii] != g[-ii]) {
+                if (s[ii] > g[-ii] || g[-ii] > 3) {
                     compRes=false;
                     return ii+L;
-                } else
-                {
+                } else {
                     compRes=true;
                     return ii+L;
                 };
             };
         };
         return N;
-    } else if (!dirR && dirG) {
+    } else if (!dirR && dirG) { // backward on read, forward on genome
         char* s  = s2[1] + S - L;
         g += SAstr + L;
-        for (ii=0; (uint) ii < N-L; ii++)
-        {
-            if (s[-ii]!=g[ii])
-            {
-                if (s[-ii]>g[ii]) {
+        for (ii=0; (uint) ii < N-L; ii++) {
+            if (s[-ii] != g[ii]) {
+                if (s[-ii] > g[ii]) {
                     compRes=true;
                     return ii+L;
-
-                } else
-                {
+                } else {
                     compRes=false;
                     return ii+L;
                 };
             };
         };
         return N;
-    } else {//if (!dirR && !dirG)
+    } else { // backward on read, backward on genome
         char* s  = s2[0] + S - L;
         g += mapGen.nGenome-1-SAstr - L;
-        for (ii=0; (uint) ii < N-L; ii++)
-        {
-            if (s[-ii]!=g[-ii])
-            {
-                if (s[-ii]>g[-ii] || g[-ii]>3)
-                {
+        for (ii=0; (uint) ii < N-L; ii++) {
+            if (s[-ii]!=g[-ii]) {
+                if (s[-ii]>g[-ii] || g[-ii]>3) {
                     compRes=false;
                     return ii+L;
-                } else
-                {
+                } else {
                     compRes=true;
                     return ii+L;
                 };
             };
         };
+
         return N;
     };
 };

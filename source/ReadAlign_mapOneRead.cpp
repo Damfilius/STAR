@@ -13,8 +13,12 @@ int ReadAlign::mapOneRead() {
 
     revertStrand = false; //the 2nd read is awlays on opposite strand. 1st and 2nd reads have already been reversed.
 
-    if (Lread>0) {
-        Nsplit=qualitySplit(Read1[0], Lread, P.maxNsplit, P.seedSplitMin, splitR);
+    /*
+    ! SPLITTING THE READ INTO CONTIGUOUS REGIONS WHOSE BASES HAVE QUALITY SCORES <= 3 (GOOD)
+    ! WE ARE STORING THE START INDICIES AND THE LENGTH OF THESE REGIONS TO splitR
+    */
+    if (Lread > 0) {
+        Nsplit = qualitySplit(Read1[0], Lread, P.maxNsplit, P.seedSplitMin, splitR);
         // splitR[0][fragnum] => good region start position   (from SequenceFuns.cpp)
         // splitR[1][fragnum] => good reagion length
         // splitR[2][fragnum] => fragnum ?
@@ -38,14 +42,19 @@ int ReadAlign::mapOneRead() {
 
     trBest=trInit;
 
-    uint seedSearchStartLmax=min(P.seedSearchStartLmax, // 50
+    /*
+    ! seedSearchStartLmax - defines the search start point through the read
+    ! seedSearchStartLmaxOverLRead - seedSearchStartLmax normalized to read length
+    ! YOU ARE PICKING THE SMALLER OF THE 2
+    */
+    uint seedSearchStartLmax = min(P.seedSearchStartLmax, // 50
                                   (uint) (P.seedSearchStartLmaxOverLread*(Lread-1))); // read length
-    // align all good pieces
-    for (uint ip=0; ip<Nsplit; ip++) {
 
+    //! YOU ARE ONLY ALIGNING THE GOOD (QUALITY) PARTS OF THE READ
+    for (uint ip=0; ip < Nsplit; ip++) {
 
         // if the good piece is long, then try multiple times to map it
-        uint Nstart = P.seedSearchStartLmax>0 && seedSearchStartLmax<splitR[1][ip] ? splitR[1][ip]/seedSearchStartLmax+1 : 1;
+        uint Nstart = P.seedSearchStartLmax > 0 && seedSearchStartLmax < splitR[1][ip] ? splitR[1][ip]/seedSearchStartLmax+1 : 1;
         uint Lstart = splitR[1][ip]/Nstart;  // length of segment to map.
         bool flagDirMap=true;
 
@@ -55,10 +64,7 @@ int ReadAlign::mapOneRead() {
 
             for (uint istart=0; istart<Nstart; istart++) {  // each try to map a segment.
 
-//               #ifdef COMPILE_FOR_LONG_READS
-//
-//               #else
-                if (flagDirMap || istart>0) {//check if the 1st piece in reveree direction does not need to be remapped
+                if (flagDirMap || istart>0) {//check if the 1st piece in reverse direction does not need to be remapped
                     Lmapped=0;  // length of segment mapped so far.
 
                     // begin mapping starting from segment start position (istart*Lstart)
@@ -69,7 +75,7 @@ int ReadAlign::mapOneRead() {
                                    ( splitR[0][ip] + splitR[1][ip] - istart*Lstart-1-Lmapped); //choose Shift for forward or reverse
 
                         //uint seedLength=min(splitR[1][ip] - Lmapped - istart*Lstart, P.seedSearchLmax);
-                        uint seedLength=splitR[1][ip] - Lmapped - istart*Lstart; // what's left of the read to align.
+                        uint seedLength = splitR[1][ip] - Lmapped - istart*Lstart; // what's left of the read to align.
                         maxMappableLength2strands(Shift, seedLength, iDir, 0, mapGen.nSA-1, L, splitR[2][ip]);//L=max mappable length, unique or multiple
                         if (iDir==0 && istart==0 && Lmapped==0 && Shift+L == splitR[1][ip] ) {//this piece maps full length and does not need to be mapped from the opposite direction
                             flagDirMap=false;

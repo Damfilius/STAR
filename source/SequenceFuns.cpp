@@ -414,7 +414,7 @@ uint qualitySplit(char* r,uint L, uint maxNsplit, uint  minLsplit, uint** splitR
     uint iR=0,iS=0,iR1,LgoodMin=0, iFrag=0;
     while ( (iR<L) & (iS<maxNsplit) ) { //main cycle
         //find next good base
-        while ( iR<L && r[iR]>3 ) {
+        while ( iR<L && r[iR]>3 ) { // iterates over contiguous regions of the read where the quality of the base > 3
             if (r[iR]==MARK_FRAG_SPACER_BASE) 
                 iFrag++; //count read fragments
             iR++;
@@ -422,15 +422,15 @@ uint qualitySplit(char* r,uint L, uint maxNsplit, uint  minLsplit, uint** splitR
 
         if (iR==L) break; //exit when reached end of read
 
-        iR1=iR;
+        iR1 = iR;
 
         //find the next bad base
-        while ( iR<L && r[iR]<=3 ) {
+        while ( iR<L && r[iR]<=3 ) { // stops wehen r[iR] > 3
             iR++;
         };
 
-        if ( (iR-iR1)>LgoodMin ) LgoodMin=iR-iR1;
-        if ( (iR-iR1)<minLsplit ) continue; //too short for a good region
+        if ( (iR-iR1) > LgoodMin ) LgoodMin = iR-iR1;
+        if ( (iR-iR1) < minLsplit ) continue; //too short for a good region
 
         splitR[0][iS]=iR1;      //good region start
         splitR[1][iS]=iR-iR1;   //good region length

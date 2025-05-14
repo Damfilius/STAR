@@ -8,33 +8,37 @@ inline uint64 fastqReadOneLine(ifstream &streamIn, char *arrIn);
 inline void removeStringEndControl(string &str);
 
 
+// most of this function is just parsing the file
 void ReadAlignChunk::processChunks() {//read-map-write chunks
+
     noReadsLeft=false; //true if there no more reads left in the file
     bool newFile=false; //new file marker in the input stream
+
     while (!noReadsLeft) {//continue until the input EOF
-            //////////////read a chunk from input files and store in memory
+
+        //! read a chunk from input files and store in memory
         if (P.outFilterBySJoutStage<2) {//read chunks from input file
 
-            if (P.runThreadN>1) pthread_mutex_lock(&g_threadChunks.mutexInRead);
+            // acquite the mutex lock when reading from the file (ensures consistency on the file ptr)
+            if (P.runThreadN > 1) pthread_mutex_lock(&g_threadChunks.mutexInRead);
 
             chunkInSizeBytesTotal={0,0};
             
             while (chunkInSizeBytesTotal[0] < P.chunkInSizeBytes && chunkInSizeBytesTotal[1] < P.chunkInSizeBytes && P.inOut->readIn[0].good() && P.inOut->readIn[1].good()) {
-                char nextChar=P.inOut->readIn[0].peek();
-                if (P.iReadAll==P.readMapNumber) {//do not read any more reads
+                char nextChar = P.inOut->readIn[0].peek();
+                if (P.iReadAll == P.readMapNumber) {//do not read any more reads
                     break;
                     
                 ///////////////////////////////////////////////////////////////////////////////////// SAM                        
-                } else if (P.readFilesTypeN==10 && P.inOut->readIn[0].good() && P.outFilterBySJoutStage!=2) {//SAM input && not eof && not 2nd stage
+                } else if (P.readFilesTypeN == 10 && P.inOut->readIn[0].good() && P.outFilterBySJoutStage != 2) {//SAM input && not eof && not 2nd stage
 
-
-                    if (nextChar=='@') {//with SAM input linest that start with @ are headers
+                    if (nextChar=='@') {//with SAM input lines that start with @ are headers
                         P.inOut->readIn[0].ignore(DEF_readNameSeqLengthMax,'\n'); //read line and skip it
                         continue;
                     };
 
                     string str1;
-                    P.inOut->readIn[0] >> str1;
+                    P.inOut->readIn[0] >> str1; 
                     if (str1=="FILE") {
                         newFile=true;
                     } else {
@@ -43,8 +47,8 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                         uint64 flag1; 
                         P.inOut->readIn[0] >> flag1;
                         uint imate1=0;
-                        for (uint imate=0;imate<P.readNmates;imate++) {//not readNends: this is SAM input
-                            if (imate>0) {
+                        for (uint imate=0; imate<P.readNmates; imate++) {//not readNends: this is SAM input
+                            if (imate > 0) {
                                 string str2;
                                 uint64 flag2;
                                 P.inOut->readIn[0] >> str2; //for imate=0 str1 was already read
@@ -70,6 +74,7 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                                 str1 = str2;   //used below for both mates
                                 flag1 = flag2; //used below for both mates
                             };
+
                             char passFilterIllumina=(flag1 & 0x800 ? 'Y' : 'N');
 
                             if (imate==1) {//2nd line is always opposite of the 1st one
@@ -108,15 +113,20 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                     };
                     
                 ///////////////////////////////////////////////////////////////////////////////////// FASTQ    
+                //* PROCESSING FASTQ FILES - ALSO SHOULD BE PLACED IN ANOTHER FUNCTION
                 } else if (nextChar=='@') {//fastq, not multi-line
+
                     P.iReadAll++; //increment read number
+
                     if (P.outFilterBySJoutStage!=2) {//not the 2nd stage of the 2-stage mapping, read ID from the 1st read
                         string readID;
                         P.inOut->readIn[0] >> readID;
                         removeStringEndControl(readID);
+
                         if (P.outSAMreadIDnumber) {
                             readID="@"+to_string(P.iReadAll);
                         };
+
                         //read the second field of the read name line
                         char passFilterIllumina='N';
                         if (P.inOut->readIn[0].peek()!='\n') {//2nd field exists
@@ -139,6 +149,7 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                             chunkIn[imate][chunkInSizeBytesTotal[imate]-1]='\n';
                         };
                     };
+
                     //copy 3 (4 for stage 2) lines: sequence, dummy, quality
                     for (uint imate=0; imate<P.readNends; imate++) {
                         // read 1st line for 2nd stage only
@@ -155,8 +166,12 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                         uint64 lenIn = fastqReadOneLine(P.inOut->readIn[imate], chunkIn[imate] + chunkInSizeBytesTotal[imate]);
                         chunkInSizeBytesTotal[imate] += lenIn;
                     };
+
+                //* PROCESSING MULTILINE FASTA FILES - ALSO SHOULD BE A SEPERATE FUNCTION
                 } else if (nextChar=='>') {//fasta, can be multiline, which is converted to single line
+
                     P.iReadAll++; //increment read number
+
                     for (uint imate=0; imate<P.readNends; imate++) {
                         if (P.outFilterBySJoutStage!=2) {//not the 2nd stage of the 2-stage mapping
 
@@ -189,9 +204,11 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                         chunkIn[imate][chunkInSizeBytesTotal[imate]]='\n';
                         chunkInSizeBytesTotal[imate] ++;
                     };
+
                 } else if (nextChar==' ' || nextChar=='\n' || !P.inOut->readIn[0].good()) {//end of stream
                     P.inOut->logMain << "Thread #" <<iThread <<" end of input stream, nextChar="<<int(nextChar) <<endl;
                     break;
+
                 } else {
                     string word1;
                     P.inOut->readIn[0] >> word1;
@@ -212,15 +229,18 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
                         P.inOut->readIn[0] >> P.readFilesIndex;
                         pthread_mutex_lock(&g_threadChunks.mutexLogMain);
                         P.inOut->logMain << "Starting to map file # " << P.readFilesIndex<<"\n";
+
                         for (uint imate=0; imate<P.readFilesNames.size(); imate++) {
                             P.inOut->logMain << "mate " <<imate+1 <<":   "<<P.readFilesNames.at(imate).at(P.readFilesIndex) <<"\n";
                             P.inOut->readIn[imate].ignore(numeric_limits<streamsize>::max(),'\n');
                         };
+
                         P.inOut->logMain<<flush;
                         pthread_mutex_unlock(&g_threadChunks.mutexLogMain);
                         newFile=false;
                 };
             };
+
             //TODO: check here that both mates are zero or non-zero
             if (chunkInSizeBytesTotal[0]==0) {
                 noReadsLeft=true; //true if there no more reads left in the file
@@ -246,6 +266,7 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
             };
         };
 
+        //! PERFORMING THE MAPPING
         mapChunk();
 
         if (iThread==0 && P.runThreadN>1 && P.outSAMorder=="PairedKeepInputOrder") {//concatenate Aligned.* files
@@ -254,28 +275,31 @@ void ReadAlignChunk::processChunks() {//read-map-write chunks
 
     };//cycle over input chunks
 
-    if (P.outFilterBySJoutStage!=1 && RA->iRead>0) {//not the first stage of the 2-stage mapping
+    if (P.outFilterBySJoutStage != 1 && RA->iRead > 0) {//not the first stage of the 2-stage mapping
         if (P.outBAMunsorted) chunkOutBAMunsorted->unsortedFlush();
         if (P.outBAMcoord) chunkOutBAMcoord->coordFlush();
-        if (chunkOutBAMquant!=NULL) chunkOutBAMquant->unsortedFlush();
+        if (chunkOutBAMquant != NULL) chunkOutBAMquant->unsortedFlush();
 
-        //the thread is finished mapping reads, concatenate the temp files into output files
+        //! the thread is finished mapping reads, concatenate the temp files into output files
         if (P.pCh.segmentMin>0) {
             chunkFstreamCat (RA->chunkOutChimSAM, P.inOut->outChimSAM, P.runThreadN>1, g_threadChunks.mutexOutChimSAM);
             chunkFstreamCat (*RA->chunkOutChimJunction, P.inOut->outChimJunction, P.runThreadN>1, g_threadChunks.mutexOutChimJunction);
         };
+
         if (P.outReadsUnmapped=="Fastx" ) {
+
             if (P.runThreadN>1)
                 pthread_mutex_lock(&g_threadChunks.mutexOutUnmappedFastx);
 
-            for (uint ii=0;ii<P.readNends;ii++) {
-                chunkFstreamCat (RA->chunkOutUnmappedReadsStream[ii],P.inOut->outUnmappedReadsStream[ii], false, g_threadChunks.mutexOutUnmappedFastx);
+            for (uint ii=0; ii<P.readNends; ii++) {
+                chunkFstreamCat (RA->chunkOutUnmappedReadsStream[ii], P.inOut->outUnmappedReadsStream[ii], false, g_threadChunks.mutexOutUnmappedFastx);
             };
 
-            if (P.runThreadN>1)
+            if (P.runThreadN > 1)
                 pthread_mutex_unlock(&g_threadChunks.mutexOutUnmappedFastx);
         };
     };
+
     if (P.runThreadN>1) pthread_mutex_lock(&g_threadChunks.mutexLogMain);
     P.inOut->logMain << "Completed: thread #" <<iThread <<endl;
     if (P.runThreadN>1) pthread_mutex_unlock(&g_threadChunks.mutexLogMain);

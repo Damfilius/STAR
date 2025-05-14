@@ -69,8 +69,9 @@ int main(int argInN, char *argIn[])
 
     time(&g_statsAll.timeStart);
 
-    ///////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////// Parameters
+    /*
+    ! ######################### Parameters #########################
+    */
     Parameters P; // all parameters
     P.inputParameters(argInN, argIn);
 
@@ -84,6 +85,7 @@ int main(int argInN, char *argIn[])
     {
         // continue
     }
+    //! GENERATING GENOME INDEXES
     else if (P.runMode == "genomeGenerate")
     {
         { // normal genome generation
@@ -106,6 +108,7 @@ int main(int argInN, char *argIn[])
                          << flush;
         exit(0);
     }
+    //! STARsolo cell filtering (”calling”) without remapping,
     else if (P.runMode == "liftOver")
     {
         for (uint ii = 0; ii < P.pGe.gChainFiles.size(); ii++)
@@ -130,18 +133,22 @@ int main(int argInN, char *argIn[])
     // this will execute --runMode soloCellFiltering and exit
     Solo soloCellFilter(P, *transcriptomeMain);
 
-    ////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////// Genome
+
+    /*
+    ! ######################### Genome #########################
+    */
     Genome genomeMain(P, P.pGe);
-    genomeMain.genomeLoad();
+    genomeMain.genomeLoad(); // loading genome indexes into main memory
 
     if (P.pGe.transform.outYes) {
+        //? create transcriptome structure, load and initialize parameters
         genomeMain.Var = new Variation(P, genomeMain.chrStart, genomeMain.chrNameIndex, false);//no variation for mapGen, only for genOut
         genomeMain.genomeOut.g->Var = new Variation(P, genomeMain.genomeOut.g->chrStart, genomeMain.genomeOut.g->chrNameIndex, P.var.yes);
     } else {
         genomeMain.Var = new Variation(P, genomeMain.chrStart, genomeMain.chrNameIndex, P.var.yes);
     };
 
+    //? The transcriptome annotation file from ENSEMBL
     SjdbClass sjdbLoci;
 
     if (P.sjdbInsert.pass1) {
@@ -150,6 +157,7 @@ int main(int argInN, char *argIn[])
     };
 
     /////////////////////////////////////////////////////////////////////////////////////////////////START
+    // sets up mutexes for the multithreaded variant
     if (P.runThreadN > 1)
     {
         g_threadChunks.threadArray = new pthread_t[P.runThreadN];
@@ -165,8 +173,10 @@ int main(int argInN, char *argIn[])
 
     g_statsAll.progressReportHeader(P.inOut->logProgress);
 
-    /////////////////////////////////////////////////////////////////////////////
-    //////////////////////////////////// 2-pass 1st pass
+
+    /*
+    ! ######################### 2 pass 1st pass #########################
+    */
     twoPassRunPass1(P, genomeMain, transcriptomeMain, sjdbLoci);
 
     if (P.quant.yes)
@@ -181,7 +191,9 @@ int main(int argInN, char *argIn[])
                         << flush;
     g_statsAll.timeLastReport = g_statsAll.timeStartMap;
 
+    //! ######################### MAPPING #########################
     // SAM headers
+    //? The sample name, sample length, and alignment method are all included in this section
     samHeaders(P, *genomeMain.genomeOut.g, *transcriptomeMain);
 
     // initialize chimeric parameters here - note that chimeric parameters require samHeader
@@ -219,6 +231,8 @@ int main(int argInN, char *argIn[])
         mapThreadsSpawn(P, RAchunk);
     };
 
+
+    //! ######################### CLOSING OFF #########################
     // close some BAM files
     if (P.inOut->outBAMfileUnsorted != NULL)
     {

@@ -18,6 +18,7 @@ public:
 
     ThreadControl();
 
+    //! SINGLE THREAD WORK
     static void* threadRAprocessChunks(void *RAchunk) {
         ( (ReadAlignChunk*) RAchunk )->processChunks();
         pthread_exit(0);
