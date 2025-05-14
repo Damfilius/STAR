@@ -116,8 +116,9 @@ uint ReadAlign::maxMappableLength2strands(uint pieceStartIn, uint pieceLengthIn,
             indStartEnd[0]=indStartEnd[1]=iSA1;
             Nrep=1;
             bool comparRes;
+            //! Compares the extension post-pre-indexable string with the genome and returns how much of the extension was mapped
             maxL = compareSeqToGenome(mapGen, Read1, pieceStart, pieceLength, Lind, iSA1, dirR, comparRes);
-        } else {//need SA search, pieceLength>maxL
+        } else { //need SA search, pieceLength > maxL
             if (iSA2good && iSA1noN) {
                 maxL = Lind; //Lind bases were already matched
             } else {

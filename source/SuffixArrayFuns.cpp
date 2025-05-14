@@ -16,7 +16,8 @@ N - length of the piece we are trying to map
 L - length of the string we are searching for in the pre-index
 iSA - starting position in the SA
 dirR - direction of search of read sequence (either left or right)
-compRes - 
+compRes - is the read lexicographically smaller or greather than the queried string from the SA
+        - True -> read is greater; False -> read is smaller
 */
 uint compareSeqToGenome(Genome &mapGen, char** s2, uint S, uint N, uint L, uint iSA, bool dirR, bool& compRes)
 {
@@ -132,26 +133,38 @@ uint findMultRange(Genome &mapGen, uint i3, uint L3, uint i1, uint L1, uint i1a,
     return i1a;
 };
 
+/*
+mapGen - map-to-genome structure
+s - read
+S - position from which to start mapping the piece 
+N - length of the piece to map
+i1 - starting SA index
+i2 - ending SA index
+dirR - direction on the read with which we are performing the search
+L - how much of the piece have we mapped already
+indStartEnd - indStartEnd[0] and indStartEnd[1] also contain starting and ending indices
+*/
 uint maxMappableLength(Genome &mapGen, char** s, uint S, uint N, uint i1, uint i2, bool dirR, uint& L, uint* indStartEnd)
 {
     /* find minimum mappable length of sequence s to the genome g with suffix array SA; length(s)=N; [i1 i2] is initial suffix array search bounds.
-     * returns number of mappings (1=unique);range indStartEnd; min mapped length = L
+     * returns number of mappings (1=unique); range indStartEnd; min mapped length = L
      * binary search in SA space
      */
 
     bool compRes;
 
-    uint L1,L2,i3,L3,L1a,L1b,L2a,L2b,i1a,i1b,i2a,i2b;
+    uint L1, L2 ,i3 ,L3 ,L1a, L1b, L2a, L2b, i1a, i1b, i2a, i2b;
 
+    //! L1 and L2 are simply how much did we map of the read for that particular starting position in the genome
     L1=compareSeqToGenome(mapGen,s,S,N,L,i1,dirR,compRes);
     L2=compareSeqToGenome(mapGen,s,S,N,L,i2,dirR,compRes);
 
 //     L1=identityLength(&s[L],&g[mapGen.SA[i1]]);
 //     L2=identityLength(&s[L],&g[mapGen.SA[i2]]);
-    L= min(L1,L2);
+    L = min(L1,L2);
 
-    L1a=L1;L1b=L1;i1a=i1;i1b=i1;
-    L2a=L2;L2b=L2;i2a=i2;i2b=i2;   // track boundaries of best matching suffix array ranges
+    L1a=L1; L1b=L1; i1a=i1; i1b=i1;
+    L2a=L2; L2b=L2; i2a=i2; i2b=i2;   // track boundaries of best matching suffix array ranges
 
 
     //  suffix array
@@ -163,8 +176,9 @@ uint maxMappableLength(Genome &mapGen, char** s, uint S, uint N, uint i1, uint i
     //   i2, L2
     // --------------------------
 
-    i3=i1;L3=L1; //in case i1+1>=i2 an not iteration of the loope below is ever made
-    while (i1+1<i2) {//main binary search loop
+    i3=i1; L3=L1; //in case i1+1>=i2 an not iteration of the loope below is ever made
+    //! BINARY SEARCH STARTS HERE
+    while (i1+1 < i2) { //main binary search loop
         i3=medianUint2(i1,i2);
         L3=compareSeqToGenome(mapGen,s,S,N,L,i3,dirR,compRes);
 
@@ -188,11 +202,15 @@ uint maxMappableLength(Genome &mapGen, char** s, uint S, uint N, uint i1, uint i
 
     };
 
-    if (L3<N) {//choose longest alignment length between L1 and L2
+    /*
+    ! handling the case we do not have an exact match
+    ! we pick the better match between L1 and L2
+    */
+    if (L3 < N) { //choose longest alignment length between L1 and L2
         if (L1>L2) {
-            i3=i1;L3=L1;
+            i3=i1; L3=L1;
         } else {
-            i3=i2;L3=L2;
+            i3=i2; L3=L2;
         };
     };
     // now i3,L3 is the "best" alignment, i.e. longest length
