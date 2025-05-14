@@ -58,14 +58,14 @@ int ReadAlign::mapOneRead() {
         uint Lstart = splitR[1][ip]/Nstart;  // length of segment to map.
         bool flagDirMap=true;
 
-        for (uint iDir=0; iDir<2; iDir++) {//loop over two directions (leftToRight and RightToLeft)
+        for (uint iDir=0; iDir<2; iDir++) { //loop over two directions (leftToRight and RightToLeft)
 
             uint Lmapped, L;
 
-            for (uint istart=0; istart<Nstart; istart++) {  // each try to map a segment.
+            for (uint istart=0; istart < Nstart; istart++) {  // each try to map a segment.
 
-                if (flagDirMap || istart>0) {//check if the 1st piece in reverse direction does not need to be remapped
-                    Lmapped=0;  // length of segment mapped so far.
+                if (flagDirMap || istart > 0) { //check if the 1st piece in reverse direction does not need to be remapped
+                    Lmapped=0;  //length of segment mapped so far.
 
                     // begin mapping starting from segment start position (istart*Lstart)
                     while ( istart*Lstart + Lmapped + P.seedMapMin < splitR[1][ip] ) {//map until unmapped portion is <=minLmap (default: 5)
@@ -84,7 +84,7 @@ int ReadAlign::mapOneRead() {
                     };//while ( istart*Lstart + Lmapped + P.minLmap < splitR[1][ip] )
                 };//if (flagDirMap || istart>0)
 
-                if (P.seedSearchLmax>0) {//search fixed length. Not very efficient, need to improve
+                if (P.seedSearchLmax > 0) {//search fixed length. Not very efficient, need to improve
                     // off by default.
                     uint Shift = iDir==0 ? ( splitR[0][ip] + istart*Lstart ) : \
                                    ( splitR[0][ip] + splitR[1][ip] - istart*Lstart-1); //choose Shift for forward or reverse

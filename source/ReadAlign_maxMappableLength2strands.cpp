@@ -74,7 +74,7 @@ uint ReadAlign::maxMappableLength2strands(uint pieceStartIn, uint pieceLengthIn,
                 ind1 = ind1 >> 2;
             };
         };
-        Lind
+
         // define upper bound for suffix array range search.
         bool iSA2good = true;
         if (mapGen.genomeSAindexStart[Lind-1]+ind1+1 < mapGen.genomeSAindexStart[Lind]) {//we are not at the end of the SA
@@ -86,7 +86,7 @@ uint ReadAlign::maxMappableLength2strands(uint pieceStartIn, uint pieceLengthIn,
                 iSA2good = false;
             };
         } else {
-            iSA2=mapGen.nSA-1;
+            iSA2 = mapGen.nSA-1;
             iSA2good = false;
         };
 
@@ -137,10 +137,14 @@ uint ReadAlign::maxMappableLength2strands(uint pieceStartIn, uint pieceLengthIn,
         maxLall[iDist]=maxL;
     };
 
-    for (uint iDist=0; iDist<min(pieceLengthIn,P.pGe.gSAsparseD); iDist++) {//cycle through different distances, store the ones with largest maxL
+    /*
+    ! STORE THE BEST ALIGNS
+    */
+    for (uint iDist=0; iDist < min(pieceLengthIn,P.pGe.gSAsparseD); iDist++) {//cycle through different distances, store the ones with largest maxL
         if ( (maxLall[iDist]+iDist) == maxLbest) {
             storeAligns(iDir, (dirR ? pieceStartIn+iDist : pieceStartIn-iDist), NrepAll[iDist], maxLall[iDist], indStartEndAll[iDist], iFrag);
         };
     };
+
     return Nrep;
 };
