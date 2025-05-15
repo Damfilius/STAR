@@ -4,33 +4,47 @@
 #include "ReadAlign.h"
 #include "SequenceFuns.h"
 
+/*
+a1 - starting index of the anchor seed in the genome
+aStr - strand
+
+creates the genomic window?
+*/
 int ReadAlign::createExtendWindowsWithAlign(uint a1, uint aStr) {
 
+    uint aBin = (a1 >> P.winBinNbits); // align's bin (anchor bin)
+    uint iBinLeft = aBin, iBinRight = aBin;
+    uintWinBin* wB = winBin[aStr];
+    uint iBin = -1, iWin = -1, iWinRight = -1;
 
-    uint aBin = (a1 >> P.winBinNbits); //align's bin
-    uint iBinLeft=aBin, iBinRight=aBin;
-    uintWinBin* wB=winBin[aStr];
-    uint iBin=-1, iWin=-1, iWinRight=-1;
 
-
-    if (wB[aBin]==uintWinBinMax) {//proceed if there is no window at this bin
+    if (wB[aBin] == uintWinBinMax) { //proceed if there is no window at this bin
         //check neighboring bins
 
-        bool flagMergeLeft=false;
+        bool flagMergeLeft = false;
         if (aBin>0) {//merge left only if there are bins on the left
-            for (iBin=aBin-1;  iBin >= ( aBin>P.winAnchorDistNbins ? aBin-P.winAnchorDistNbins : 0 );  --iBin) {//go left, find windows in Anchor range
-                if (wB[iBin]<uintWinBinMax) {
-                    flagMergeLeft=true;
+            /*
+            ! if the anchor bin lies ahead of the max distance between bins within which anchor bins are aggregated than you only check the bins 
+            ! within that distance (AND YOU ARE ONLY CHECKING TO THE LEFT)
+            */
+            for (iBin = aBin-1;  iBin >= ( aBin > P.winAnchorDistNbins ? aBin - P.winAnchorDistNbins : 0 );  --iBin) {//go left, find windows in Anchor range
+                if (wB[iBin] < uintWinBinMax) {
+                    flagMergeLeft=true; //! set flag whcih says that we need to merge to an achor seed to the left
                     break;
                 };
                 if (iBin==0) break;
             };
-            flagMergeLeft = flagMergeLeft && (mapGen.chrBin[iBin>>P.winBinChrNbits]==mapGen.chrBin[aBin>>P.winBinChrNbits]);
+
+            //! only merge left if the anchor seed to the left of the current anchor seed belongs within the same chimeric bin of the genome
+            flagMergeLeft = flagMergeLeft && (mapGen.chrBin[iBin >> P.winBinChrNbits] == mapGen.chrBin[aBin >> P.winBinChrNbits]);
             if (flagMergeLeft) {//this align can be merged into the existing window
-                iWin=wB[iBin];
-                iBinLeft=WC[iWin][WC_gStart];
-                for (uint ii=iBin+1; ii<=aBin; ii++) {//mark al bins with the existing windows ID
-                    wB[ii]=iWin;
+                iWin = wB[iBin];
+                iBinLeft = WC[iWin][WC_gStart];
+                /*
+                ! all bins between the left anchor seed and the current anchor seed are marked as one genomic window
+                */
+                for (uint ii = iBin+1; ii <= aBin; ii++) {
+                    wB[ii] = iWin;
                 };
             };
         };
@@ -38,7 +52,7 @@ int ReadAlign::createExtendWindowsWithAlign(uint a1, uint aStr) {
         bool flagMergeRight=false;
         if (aBin+1<P.winBinN) {//merge left only if there are bins on the right
             for (iBin=aBin+1;  iBin<min(aBin+P.winAnchorDistNbins+1,P.winBinN);  ++iBin) {//go right, find windows in Anchor range
-                if (wB[iBin]<uintWinBinMax) {
+                if (wB[iBin] < uintWinBinMax) {
                     flagMergeRight=true;
                     break;
                 };
@@ -54,8 +68,8 @@ int ReadAlign::createExtendWindowsWithAlign(uint a1, uint aStr) {
 //                     exit(0);
 //                 };
                 if (!flagMergeLeft) iWin=wB[iBin];//left window overwrites right
-                for (uint ii=aBin; ii<=iBin; ii++) {//mark al bins with the existing windows ID
-                    wB[ii]=iWin;
+                for (uint ii = aBin; ii <= iBin; ii++) {//mark al bins with the existing windows ID
+                    wB[ii] = iWin;
                 };
             };
         };
@@ -65,9 +79,14 @@ int ReadAlign::createExtendWindowsWithAlign(uint a1, uint aStr) {
             wB[aBin]=iWin=nW; //add new window ID for now, may change it later
             WC[iWin][WC_Chr]=mapGen.chrBin[aBin >> P.winBinChrNbits];
             WC[iWin][WC_Str]=aStr;
-            WC[iWin][WC_gEnd]=WC[iWin][WC_gStart]=aBin;
+            WC[iWin][WC_gEnd] = WC[iWin][WC_gStart] = aBin;
             ++nW;
-            if (nW>=P.alignWindowsPerReadNmax) {
+            /*
+            ! EXCEEDED MAX NUMBER OF WINDOWS PER READ
+
+            THIS MIGHT BE A PROBLEM - YOU ARE DISCREDITING A POTENTIALLY GOOD ANCHOR SEED BECAUSE YOU HAVE ALREADY CREATED TOO MANY WINDOWS?
+            */
+            if (nW >= P.alignWindowsPerReadNmax) { 
                 nW=P.alignWindowsPerReadNmax-1;
                 return EXIT_createExtendWindowsWithAlign_TOO_MANY_WINDOWS; //too many windows, do not record TODO: record a marker
             };
@@ -80,6 +99,7 @@ int ReadAlign::createExtendWindowsWithAlign(uint a1, uint aStr) {
             };
         };
     };
+
     return 0;
 };
 

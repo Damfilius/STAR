@@ -216,6 +216,10 @@ void Genome::chrBinFill() {
 };
 
 //////////////////////////////////////////////////////////
+/*
+! G1out - start of the allocated buffer for the genome (includes 100 byte padding)
+! Gout - start of the first element of the genome (skips the padding)
+*/
 void Genome::genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*& Gout, char*& G1out)
 {
     nG1allocOut=(nGenomeIn + 100)*2; //extra 100 bytes at the beginning, just in case

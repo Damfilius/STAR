@@ -22,12 +22,12 @@ class PackedArray {
 };
 
 inline uint PackedArray::operator [] (uint ii) {
-   uint b=ii*wordLength;
-   uint B=b/8;
-   uint S=b%8;
+   uint b = ii*wordLength; //starting bit position
+   uint B=b/8; //bytes
+   uint S=b%8; //remainder bits
 
    uint a1 = *((uint*) (charArray+B));
-   a1 = ((a1>>S)<<wordCompLength)>>wordCompLength;
+   a1 = ((a1 >> S) << wordCompLength) >> wordCompLength;
    return a1;
 };
 

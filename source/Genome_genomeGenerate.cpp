@@ -261,8 +261,7 @@ void Genome::genomeGenerate() {
         P.inOut->logMain     << timeMonthDayTime(rawTime) <<" ... sorting Suffix Array chunks and saving them to disk...\n" <<flush;
         *P.inOut->logStdOut  << timeMonthDayTime(rawTime) <<" ... sorting Suffix Array chunks and saving them to disk...\n" <<flush;
 
-        // #pragma omp parallel for
-        // #pragma omp parallel for num_threads(P.runThreadN) ordered schedule(dynamic,1)
+        #pragma omp parallel for num_threads(P.runThreadN) ordered schedule(dynamic,1)
         for (int iChunk=0; iChunk < (int) saChunkN; iChunk++) {//start the chunk cycle: sort each chunk with qsort and write to a file
             uint* saChunk=new uint [indPrefChunkCount[iChunk]];//allocate local array for each chunk
             for (uint ii=0,jj=0;ii<2*nGenome;ii+=pGe.gSAsparseD) {//fill the chunk with SA indices
@@ -275,8 +274,6 @@ void Genome::genomeGenerate() {
                     //TODO: if (jj==indPrefChunkCount[iChunk]) break;
                 };
             };
-
-            *P.inOut->logStdOut << "working this shit man...\n";
 
 
             //sort the chunk

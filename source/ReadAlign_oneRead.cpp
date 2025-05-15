@@ -39,7 +39,8 @@ int ReadAlign::oneRead() {//process one read: load, map, write
         };
     };
     
-    if (P.readNmates==2) {//combine two mates together
+    //! COMBINING MULTIPLE READS INTO ONE BUFFER FOR LATER PROCESSING
+    if (P.readNmates==2) { //combine two mates together
         Lread=readLength[0]+readLength[1]+1;
         readLengthPairOriginal=readLengthOriginal[0]+readLengthOriginal[1]+1;
         if (Lread>DEF_readSeqLengthMax) {
@@ -82,7 +83,7 @@ int ReadAlign::oneRead() {//process one read: load, map, write
     statsRA.readBases += readLength[0]+readLength[1];
 
     //max number of mismatches allowed for this read
-    outFilterMismatchNmaxTotal=min(P.outFilterMismatchNmax, (uint) (P.outFilterMismatchNoverReadLmax*(readLength[0]+readLength[1])));
+    outFilterMismatchNmaxTotal = min(P.outFilterMismatchNmax, (uint) (P.outFilterMismatchNoverReadLmax*(readLength[0]+readLength[1])));
 
     //map the read
     if (P.pGe.gType==101) {//SpliceGraph
