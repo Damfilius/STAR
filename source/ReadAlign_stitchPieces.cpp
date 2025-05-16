@@ -78,16 +78,18 @@ void ReadAlign::stitchPieces(char **R, uint Lread) {
     };//for (uint iP=0; iP<nP; iP++) //scan through all anchor pieces, create alignment windows
 
 
-    for (uint iWin=0; iWin<nW; iWin++) {//extend windows with flanks
+    for (uint iWin=0; iWin < nW; iWin++) {//extend windows with flanks
         if (WC[iWin][WC_gStart] <= WC[iWin][WC_gEnd]) {//otherwise the window is dead
 
+            //! EXTEND WINDOWS TO THE LEFT
             uint wb = WC[iWin][WC_gStart]; // window starting position
             for (uint ii=0; ii < P.winFlankNbins && wb > 0 && mapGen.chrBin[(wb-1) >> P.winBinChrNbits] == WC[iWin][WC_Chr]; ii++) {
                 wb--;
-                winBin[ WC[iWin][WC_Str] ][ wb ]=(uintWinBin) iWin;
+                winBin[ WC[iWin][WC_Str] ][ wb ] = (uintWinBin) iWin;
             };
             WC[iWin][WC_gStart] = wb;
 
+            //! EXTEND WINDOWS TO THE RIGHT
             wb=WC[iWin][WC_gEnd];
             for (uint ii=0; ii<P.winFlankNbins && wb+1<P.winBinN && mapGen.chrBin[(wb+1) >> P.winBinChrNbits]==WC[iWin][WC_Chr];ii++) {
                 wb++;
@@ -112,31 +114,31 @@ void ReadAlign::stitchPieces(char **R, uint Lread) {
     #endif
 
     for (uint iP=0; iP<nP; iP++) {//scan through all pieces/aligns, add them to alignment windows, create alignment coordinates
-        uint aNrep=PC[iP][PC_Nrep];
+        uint aNrep=PC[iP][PC_Nrep]; // number of mappings
         uint aFrag=PC[iP][PC_iFrag];
-        uint aLength=PC[iP][PC_Length];
-        uint aDir=PC[iP][PC_Dir];
+        uint aLength=PC[iP][PC_Length]; // length of the piece
+        uint aDir=PC[iP][PC_Dir]; // direction of mapping
 
-        bool aAnchor=(aNrep<=P.winAnchorMultimapNmax); //this align is an anchor or not
+        bool aAnchor = (aNrep <= P.winAnchorMultimapNmax); //this align is an anchor or not
 
-        for (uint ii=0;ii<nW;ii++) {//initialize nWAP
+        for (uint ii=0; ii<nW; ii++) {//initialize nWAP
             nWAP[ii]=0;
         };
 
         for (uint iSA=PC[iP][PC_SAstart]; iSA<=PC[iP][PC_SAend]; iSA++) {//scan through all alignments
 
-            uint a1 = mapGen.SA[iSA];
+            uint a1 = mapGen.SA[iSA]; // index within the genome
             uint aStr = a1 >> mapGen.GstrandBit;
             a1 &= mapGen.GstrandMask; //remove strand bit
-            uint aRstart=PC[iP][PC_rStart];
+            uint aRstart = PC[iP][PC_rStart];
 
             //convert to positive strand
             if (aDir==1 && aStr==0) {
                 aStr=1;
-                aRstart = Lread - (aLength+aRstart);
+                aRstart = Lread - (aLength+aRstart); // if starting from right then shift to the end of the piece
             } else if (aDir==0 && aStr==1) {
-                aRstart = Lread - (aLength+aRstart);
-                a1 = mapGen.nGenome - (aLength+a1);
+                aRstart = Lread - (aLength+aRstart); // if starting from right then shift to the end of the piece in the read
+                a1 = mapGen.nGenome - (aLength+a1); // on the genome we are starting from left and going forwards
             } else if (aDir==1 && aStr==1) {
                 aStr=0;
                 a1 = mapGen.nGenome - (aLength+a1);

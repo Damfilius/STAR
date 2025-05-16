@@ -329,11 +329,12 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
 
 ///////// Initial parameters from Command Line
 
-    commandLine="";
+    commandLine=""; // string version of all the parameters
     string commandLineFile="";
 
-    if (argInN>1) {//scan parameters from command line
+    if (argInN>1) { //scan parameters from command line
         commandLine += string(argIn[0]);
+        //! iterating over the parameters
         for (int iarg=1; iarg<argInN; iarg++) {
             string oneArg=string(argIn[iarg]);
 
@@ -343,6 +344,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
             };
 
             size_t found = oneArg.find("=");
+            //! checks whether there is an = sign in the parameter
             if (found!=string::npos && oneArg.substr(0,2)=="--") {// --parameter=value
                 string key = oneArg.substr(2, found - 2);
                 string val = oneArg.substr(found + 1);
@@ -351,9 +353,9 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
                 };
                 commandLineFile += '\n' + key + ' ' + val;
             } else if (oneArg.substr(0,2)=="--") {//parameter name, cut --
-                commandLineFile +='\n' + oneArg.substr(2);
+                commandLineFile +='\n' + oneArg.substr(2); // take off the initial --
             } else {//parameter value
-                if (oneArg.find_first_of(" \t")!=std::string::npos) {//there is white space in the argument, put "" around
+                if (oneArg.find_first_of(" \t") != std::string::npos) { //there is white space in the argument, put "" around
                     oneArg ='\"'  + oneArg +'\"';
                 };
                 commandLineFile +=' ' + oneArg;
@@ -1215,8 +1217,8 @@ int Parameters::scanOneLine (string &lineIn, int inputLevel, int inputLevelReque
     if (parIn=="" || parIn.substr(0,2)=="//" || parIn.substr(0,1)=="#") return 0; //this is a comment
 
     uint iPar;
-    for (iPar=0; iPar<parArray.size(); iPar++) {
-        if (parIn==parArray[iPar]->nameString) {//
+    for (iPar=0; iPar < parArray.size(); iPar++) {
+        if (parIn == parArray[iPar]->nameString) {//
             if (inputLevelRequested < 0 || inputLevelRequested == parArray[iPar]->inputLevelAllowed) {
                 break;//will read this parameter values
             } else {
@@ -1227,7 +1229,7 @@ int Parameters::scanOneLine (string &lineIn, int inputLevel, int inputLevelReque
 
     string parV("");
     lineInStream >> parV;
-    if (parV=="") {//parameter value cannot be empty
+    if (parV=="") { //parameter value cannot be empty
         ostringstream errOut;
         errOut << "EXITING: FATAL INPUT ERROR: empty value for parameter \""<< parIn << "\" in input \"" << parameterInputName.at(inputLevel) <<"\"\n";
         errOut << "SOLUTION: use non-empty value for this parameter\n"<<flush;
