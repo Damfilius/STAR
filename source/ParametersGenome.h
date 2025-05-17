@@ -16,6 +16,7 @@ public:
     
     vector <string> gFastaFiles;
     vector <string> gChainFiles;
+    string mappabilityFile; // string contains file path to the mappabiility file
     //string gConsensusFile; DEPRECATED
 
     struct {

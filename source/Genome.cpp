@@ -136,7 +136,8 @@ void Genome::HandleSharedMemoryException(const SharedMemoryException & exc, uint
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////
-void Genome::chrInfoLoad() {//find chrStart,Length,nChr from Genome G
+// BASICALLTY LOADS CHROMOSOME RELATED FILES AND READS FROM THEM THEIR NAMES, LENGTHS AND START POSITIONS
+void Genome::chrInfoLoad() { //find chrStart,Length,nChr from Genome G
 
     //load chr names
     ifstream chrStreamIn ( (pGe.gDir+"/chrName.txt").c_str() );
@@ -236,3 +237,102 @@ void Genome::genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*
 
     memset(G1out,GENOME_spacingChar,nG1allocOut);//initialize to K-1 all bytes
 };
+
+
+void Genome::mapInfoLoad() {
+
+    //load chr names
+    ifstream mapStreamIn ( (pGe.mappabilityFile).c_str() );
+    if (mapStreamIn.fail()) {
+        ostringstream errOut;
+        errOut << "EXITING because of FATAL error, could not open file " << (pGe.mappabilityFile) <<"\n";
+        errOut << "SOLUTION: re-generate mappability ratings for the genome\n";
+        exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
+    };
+
+    char mapInChar[1000];
+    char mapInCharSec[1000];
+
+    string mapLine;
+    mapStreamIn.getline(mapInChar, 1000);
+    mapLine = mapInChar;
+    if (mapLine.find("track") == std::string::npos) {
+        // not the format I expected so we reset the ifstream
+        mapStreamIn.seekg(0);
+    }
+
+    while (mapStreamIn.good()) {
+        mapStreamIn.getline(mapInChar,1000);
+        if (std::ios::fail) {
+            mapStreamIn.getline(mapInCharSec,1000);
+            if (std::ios::fail) { 
+                ostringstream errOut;
+                errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (pGe.mappabilityFile) <<"\n";
+                errOut << "SOLUTION: generate the mappability file with GENMEP\n";
+                exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
+            }
+        }
+
+        mapLine = mapInChar;
+        if (mapLine == "") break; // reached the end
+        processMapLine(mapLine) ;
+    };
+
+    chrStreamIn.close();
+    nChrReal=chrName.size();
+
+    P.inOut->logMain << "Number of real (reference) chromosomes= " << nChrReal <<"\n"<<flush;
+    chrStart.resize(nChrReal+1);
+    chrLength.resize(nChrReal);
+
+
+    //log
+    for (uint ii=0; ii<nChrReal;ii++) {
+        P.inOut->logMain << ii+1 <<"\t"<< chrName[ii] <<"\t"<<chrLength[ii]<<"\t"<<chrStart[ii]<<"\n"<<flush;
+        chrNameIndex[chrName[ii]]=ii;
+    };
+
+    //chr sets
+    for (auto &cm: pGe.chrSet.mitoStrings) {
+        uint64 ind1 = std::find(chrName.begin(), chrName.end(), cm) - chrName.begin();
+        pGe.chrSet.mito.insert(ind1);
+    };
+}
+
+void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line) {
+    map_rating* mr = new map_rating {};
+
+    mapStream.getline(mapCharLine, 1000);
+    if (std::ios::fail) {
+        mapStream.getline(mapCharLineSecond,1000);
+        if (std::ios::fail) { 
+            ostringstream errOut;
+            errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (pGe.mappabilityFile) <<"\n";
+            errOut << "SOLUTION: generate the mappability file with GENMEP\n";
+            exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
+        }
+    }
+
+    line = mapCharLine;
+    line += mapCharLineSecond;
+
+    parseMapLine(line, mr->chr, mr->start, mr->end, mr->rating);
+    mappabilityRatings.push_back(mr);
+}
+
+void Genome::parseMapLine(string& line, string& chrName, uint64& start, uint64& end, int& rating) {
+    size_t prevPos = 0;
+    size_t nextPos, length;
+    vector<string> params;
+
+    while (true) {
+        nextPos = line.find('\t', prevPos);
+        if (nextPos == std::string::npos) {
+            nextPos = line.find('\n', prevPos);
+            if (nextPos == std::string::npos) break;
+        }
+        length = nextPos - prevPos;
+        string param = line.substr(prevPos, length);
+        params.push_back(param);
+    }
+}

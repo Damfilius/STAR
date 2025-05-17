@@ -10,6 +10,14 @@
 
 class GTF;
 
+typedef struct mappability {
+    string chr;
+    uint64 start;
+    uint64 end;
+    int rating;
+    mappability(string chr, uint64 start, uint64 length, int rating) : chr{chr}, start{start}, length{length}, rating{rating} {}
+} map_rating;
+
 class Genome {
 private:
     key_t shmKey;
@@ -24,16 +32,17 @@ public:
     enum {exT,exS,exE,exG,exL}; //indexes in the exonLoci array from GTF
      
     char *G, *G1;
+    char *GMap; // contains the corresponding mappability rating for the base of the genome
     uint64 nGenome, nG1alloc;
+    uint64 nGenomeMap; // size of GMap
     PackedArray SA,SAinsert,SApass1,SApass2;
     PackedArray SAi;
     Variation *Var;
 
     uint nGenomeInsert, nGenomePass1, nGenomePass2, nSAinsert, nSApass1, nSApass2;
 
-
     //chr parameters
-    vector <uint64> chrStart, chrLength, chrLengthAll;
+    vector <uint64> chrStart, chrLength, chrLengthAll; // keeps track of chromosome start positions and lengths
     uint genomeChrBinNbases, chrBinN, *chrBin;
     vector <string> chrName, chrNameAll;
     map <string,uint64> chrNameIndex;
@@ -59,6 +68,9 @@ public:
     uint genomeInsertL; //total length of the sequence to be inserted on the fly
     uint genomeInsertChrIndFirst; //index of the first inserted chromosome
 
+    // mappability rating parameters
+    vector<map_rating*> mappabilityRatings;
+
     //SuperTranscriptome genome
     SuperTranscriptome *superTr;
 
@@ -70,6 +82,9 @@ public:
     void genomeOutLoad();
     void chrBinFill();
     void chrInfoLoad();
+    void mapInfoLoad();
+    void processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line);
+    void parseMapLine(string& line, string& chrName, uint64& start, uint64& end, int& rating);
     void genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*& Gout, char*& G1out);
     void loadSJDB(string &genDir);
 

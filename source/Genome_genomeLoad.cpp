@@ -15,22 +15,23 @@
 // //first available byt of the shm
 // #define SHM_startSHM 32
 
-void Genome::genomeLoad(){//allocate and load Genome
+void Genome::genomeLoad(){ //allocate and load Genome
 
     time_t rawtime;
     time ( &rawtime );
     *(P.inOut->logStdOut) << timeMonthDayTime(rawtime) << " ..... loading genome\n" <<flush;
 
     uint *shmNG=NULL, *shmNSA=NULL;   //pointers to shm stored values , *shmSG, *shmSSA
-    uint64 shmSize=0;//, shmStartG=0; shmStartSA=0;
+    uint64 shmSize=0; //, shmStartG=0; shmStartSA=0;
 
-    uint L=200,K=6;
+    uint L=200, K=6;
 
     Parameters P1;
 
     //some initializations before reading the parameters
     GstrandBit=0;
 
+    // ####################### PROCESSING THE PARAMETERS FILE WITHIN THE GENOME INDEX DIRECTORY #######################
     ifstream parFile((pGe.gDir+("/genomeParameters.txt")).c_str());
     if (parFile.good()) {
         P.inOut->logMain << "Reading genome generation parameters:\n";
@@ -67,7 +68,7 @@ void Genome::genomeLoad(){//allocate and load Genome
         exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_GENOME_FILES, P);
     };
 
-    //check genome version
+    // ####################### CHECKING GENOME VERSION #######################
     if (P1.versionGenome.size()==0) {//
         ostringstream errOut;
         errOut << "EXITING because of FATAL ERROR: read no value for the versionGenome parameter from genomeParameters.txt file\n";
@@ -83,7 +84,10 @@ void Genome::genomeLoad(){//allocate and load Genome
     };
 
     //find chr starts from files
+    // ####################### FIND START COORDIANTES OF CHROMOSOMES FROM THE GENOME #######################
     chrInfoLoad();
+
+    // ####################### PROCESS THE MAPABILITY FILE #######################
 
     //check if sjdbInfo.txt exists => genome was generated with junctions
     bool sjdbInfoExists=false;
@@ -101,10 +105,10 @@ void Genome::genomeLoad(){//allocate and load Genome
     };
 
     //record required genome parameters in P
-    pGe.gSAindexNbases=P1.pGe.gSAindexNbases;
-    pGe.gChrBinNbits=P1.pGe.gChrBinNbits;
-    genomeChrBinNbases=1LLU<<pGe.gChrBinNbits;
-    pGe.gSAsparseD=P1.pGe.gSAsparseD;
+    pGe.gSAindexNbases = P1.pGe.gSAindexNbases;
+    pGe.gChrBinNbits = P1.pGe.gChrBinNbits;
+    genomeChrBinNbases = 1LLU<<pGe.gChrBinNbits;
+    pGe.gSAsparseD = P1.pGe.gSAsparseD;
 
     if (P1.pGe.gFileSizes.size()>0){//genomeFileSize was recorded in the genomeParameters file, copy the values to P
         pGe.gFileSizes = P1.pGe.gFileSizes;
@@ -246,7 +250,7 @@ void Genome::genomeLoad(){//allocate and load Genome
         genomeInsertChrIndFirst=nChrReal;
         if (pGe.gFastaFiles.at(0)!="-") {//will insert sequences in the genome, now estimate the extra size
            uint oldlen=chrStart.back();//record the old length
-           genomeInsertL=genomeScanFastaFiles(P, G, false, *this)-oldlen;
+           genomeInsertL = genomeScanFastaFiles(P, G, false, *this)-oldlen;
         };
 
         try {

@@ -52,6 +52,9 @@ Parameters::Parameters() {//initalize parameters info
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "genomeTransformOutput", &pGe.transform.output));
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "genomeChrSetMitochondrial", &pGe.chrSet.mitoStrings));
 
+    // adding the BED file for mappability
+    parArray.push_back(new ParameterInfoVector <string> (-1, -1, "genomeMapblty", &pGe.mappabilityFile));
+
     //read
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "readFilesType", &readFilesType));
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "readFilesIn", &readFilesIn));
@@ -368,7 +371,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
 
 	createDirectory(outFileNamePrefix, S_IRWXU, "--outFileNamePrefix", *this); //TODO: runDirPerm is hard-coded now. Need to load it from command-line
 
-    outLogFileName=outFileNamePrefix + "Log.out";
+    outLogFileName = outFileNamePrefix + "Log.out";
     inOut->logMain.open(outLogFileName.c_str());
     if (inOut->logMain.fail()) {
         ostringstream errOut;
@@ -435,7 +438,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
 
 ///////// Command Line Final
 
-    if (argInN>1) {//scan all parameters from command line and override previous values
+    if (argInN > 1) {//scan all parameters from command line and override previous values
         inOut->logMain << "###### All USER parameters from Command Line:\n" <<flush;
         istringstream parStreamCommandLine(commandLineFile);
         scanAllLines(parStreamCommandLine, 2, -1);
@@ -619,7 +622,7 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
                 errOut <<"SOLUTION: re-run STAR with one of the allowed values of --outSAMtype BAM Unsorted OR SortedByCoordinate OR both\n";
                 exitWithError(errOut.str(), std::cerr, inOut->logMain, EXIT_CODE_PARAMETER, *this);
             };
-            for (uint32 ii=1; ii<outSAMtype.size(); ii++) {
+            for (uint32 ii=1; ii < outSAMtype.size(); ii++) {
                 if (outSAMtype.at(ii)=="Unsorted") {
                     outBAMunsorted=true;
                 } else if (outSAMtype.at(ii)=="SortedByCoordinate") {
@@ -1247,7 +1250,7 @@ int Parameters::scanOneLine (string &lineIn, int inputLevel, int inputLevelReque
         if (inputLevel==0 && parArray[iPar]->inputLevel>0) {//this is one of the initial parameters, it was read from Command Line and should not be re-defined
             getline(lineInStream,parV);
             inOut->logMain << setiosflags(ios::left) << setw(PAR_NAME_PRINT_WIDTH) << parArray[iPar]->nameString <<parV<<" ... is RE-DEFINED on Command Line as: " << *(parArray[iPar]) <<"\n";
-        } else if (parArray[iPar]->inputLevelAllowed>0 && parArray[iPar]->inputLevelAllowed < inputLevel) {//this is initial parameter and cannot be redefined
+        } else if (parArray[iPar]->inputLevelAllowed > 0 && parArray[iPar]->inputLevelAllowed < inputLevel) {//this is initial parameter and cannot be redefined
             ostringstream errOut;
             errOut << "EXITING: FATAL INPUT ERROR: parameter \""<< parIn << "\" cannot be defined at the input level \"" << parameterInputName.at(inputLevel) << "\"\n";
             errOut << "SOLUTION: define parameter \""<< parIn << "\" in \"" << parameterInputName.at(parArray[iPar]->inputLevelAllowed) <<"\"\n" <<flush;
