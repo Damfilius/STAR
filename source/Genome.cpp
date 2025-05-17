@@ -262,41 +262,14 @@ void Genome::mapInfoLoad() {
     }
 
     while (mapStreamIn.good()) {
-        mapStreamIn.getline(mapInChar,1000);
-        if (std::ios::fail) {
-            mapStreamIn.getline(mapInCharSec,1000);
-            if (std::ios::fail) { 
-                ostringstream errOut;
-                errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (pGe.mappabilityFile) <<"\n";
-                errOut << "SOLUTION: generate the mappability file with GENMEP\n";
-                exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
-            }
-        }
-
-        mapLine = mapInChar;
+        processMapLine(mapStreamIn, mapInChar, mapInCharSec, mapLine);
         if (mapLine == "") break; // reached the end
-        processMapLine(mapLine) ;
     };
 
-    chrStreamIn.close();
-    nChrReal=chrName.size();
+    mapStreamIn.close();
+    nMapRatings = mapRatings.start.size();
 
-    P.inOut->logMain << "Number of real (reference) chromosomes= " << nChrReal <<"\n"<<flush;
-    chrStart.resize(nChrReal+1);
-    chrLength.resize(nChrReal);
-
-
-    //log
-    for (uint ii=0; ii<nChrReal;ii++) {
-        P.inOut->logMain << ii+1 <<"\t"<< chrName[ii] <<"\t"<<chrLength[ii]<<"\t"<<chrStart[ii]<<"\n"<<flush;
-        chrNameIndex[chrName[ii]]=ii;
-    };
-
-    //chr sets
-    for (auto &cm: pGe.chrSet.mitoStrings) {
-        uint64 ind1 = std::find(chrName.begin(), chrName.end(), cm) - chrName.begin();
-        pGe.chrSet.mito.insert(ind1);
-    };
+    P.inOut->logMain << "Number of base ratings = " << nMapRatings <<"\n"<<flush;
 }
 
 void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line) {
@@ -314,6 +287,8 @@ void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCha
 
     line = mapCharLine;
     line += mapCharLineSecond;
+
+    if (line == "") return;
 
     parseMapLine(line);
 }

@@ -88,6 +88,7 @@ void Genome::genomeLoad(){ //allocate and load Genome
     chrInfoLoad();
 
     // ####################### PROCESS THE MAPABILITY FILE #######################
+    mapInfoLoad();
 
     //check if sjdbInfo.txt exists => genome was generated with junctions
     bool sjdbInfoExists=false;

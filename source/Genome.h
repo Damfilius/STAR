@@ -69,6 +69,7 @@ public:
 
     // mappability rating parameters
     mapRatings ratings {};
+    uint64 nMapRatings;
 
     //SuperTranscriptome genome
     SuperTranscriptome *superTr;
