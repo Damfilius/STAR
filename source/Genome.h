@@ -11,12 +11,11 @@
 class GTF;
 
 typedef struct mappability {
-    string chr;
-    uint64 start;
-    uint64 end;
-    int rating;
-    mappability(string chr, uint64 start, uint64 length, int rating) : chr{chr}, start{start}, length{length}, rating{rating} {}
-} map_rating;
+    vector<string> chrNames;
+    vector<uint64> start;
+    vector<uint64> end;
+    vector<int> ratings;
+} mapRatings;
 
 class Genome {
 private:
@@ -69,7 +68,7 @@ public:
     uint genomeInsertChrIndFirst; //index of the first inserted chromosome
 
     // mappability rating parameters
-    vector<map_rating*> mappabilityRatings;
+    mapRatings ratings {};
 
     //SuperTranscriptome genome
     SuperTranscriptome *superTr;
@@ -84,7 +83,7 @@ public:
     void chrInfoLoad();
     void mapInfoLoad();
     void processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line);
-    void parseMapLine(string& line, string& chrName, uint64& start, uint64& end, int& rating);
+    void parseMapLine(string& line);
     void genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*& Gout, char*& G1out);
     void loadSJDB(string &genDir);
 

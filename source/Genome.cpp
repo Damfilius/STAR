@@ -300,7 +300,6 @@ void Genome::mapInfoLoad() {
 }
 
 void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line) {
-    map_rating* mr = new map_rating {};
 
     mapStream.getline(mapCharLine, 1000);
     if (std::ios::fail) {
@@ -316,11 +315,10 @@ void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCha
     line = mapCharLine;
     line += mapCharLineSecond;
 
-    parseMapLine(line, mr->chr, mr->start, mr->end, mr->rating);
-    mappabilityRatings.push_back(mr);
+    parseMapLine(line);
 }
 
-void Genome::parseMapLine(string& line, string& chrName, uint64& start, uint64& end, int& rating) {
+void Genome::parseMapLine(string& line) {
     size_t prevPos = 0;
     size_t nextPos, length;
     vector<string> params;
@@ -335,4 +333,14 @@ void Genome::parseMapLine(string& line, string& chrName, uint64& start, uint64& 
         string param = line.substr(prevPos, length);
         params.push_back(param);
     }
+    
+    string chrName = params.at(0);
+    uint64 start = std::stoll(params.at(1));
+    uint64 end = std::stoll(params.at(2));
+    int rating = std::stoi(params.at(3));
+
+    mapRatings.chrNames.push_back(chrName);
+    mapRatings.start.push_back(start);
+    mapRatings.end.push_back(end);
+    mapRatings.ratings.push_back(rating);
 }
