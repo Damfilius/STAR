@@ -245,8 +245,8 @@ void Genome::loadAllMappability() {
     ratingsLarge.kmerSize = pGe.kmerSizeLarge;
 
     // loads the mappability files
-    mapInfoLoad(pGe.mappabilityFileSmall, &ratingsSmall);
-    mapInfoLoad(pGe.mappabilityFileLarge, &ratingsLarge);
+    mapInfoLoad(pGe.mappabilityFileSmall, ratingsSmall);
+    mapInfoLoad(pGe.mappabilityFileLarge, ratingsLarge);
 }
 
 /*
@@ -258,7 +258,7 @@ void Genome::mapInfoLoad(string mapFilePath, mapRatings& mapInfo) {
     ifstream mapStreamIn ( mapFilePath.c_str() );
     if (mapStreamIn.fail()) {
         ostringstream errOut;
-        errOut << "EXITING because of FATAL error, could not open file " << (pGe.mappabilityFile) <<"\n";
+        errOut << "EXITING because of FATAL error, could not open file " << (mapFilePath) <<"\n";
         errOut << "SOLUTION: re-generate mappability ratings for the genome\n";
         exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
     };
@@ -274,12 +274,12 @@ void Genome::mapInfoLoad(string mapFilePath, mapRatings& mapInfo) {
     }
 
     while (mapStreamIn.good()) {
-        processMapLine(mapStreamIn, mapInChar, mapLine, mapInfo);
+        processMapLine(mapStreamIn, mapFilePath, mapInChar, mapLine, mapInfo);
         if (mapLine == "") break; // reached the end
     };
 
     mapStreamIn.close();
-    nMapRatings = mapRatings.start.size();
+    nMapRatings = mapInfo.start.size();
 
     P.inOut->logMain << "Number of base ratings = " << nMapRatings <<"\n"<<flush;
 }
@@ -290,12 +290,12 @@ mapCharLine - buffer the lines are getting read into
 mapCharLineSecond - safety buffer in case mapCharLine is not big enough
 line - initialized to be whatever the contentes of mapCharLine are
 */
-void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, string& line, mapRatings& mapInfo) {
+void Genome::processMapLine(ifstream& mapStream, string mapFilePath, char* mapCharLine, string& line, mapRatings& mapInfo) {
 
     mapStream.getline(mapCharLine, 1000);
-    if (std::ios::fail) { // you read 1000 chars but you haven't reached end of line character yet - something is wrong
+    if ((mapStream.rdstate() & std::ifstream::failbit) != 0) { // you read 1000 chars but you haven't reached end of line character yet - something is wrong
         ostringstream errOut;
-        errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (pGe.mappabilityFile) <<"\n";
+        errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (mapFilePath) <<"\n";
         errOut << "SOLUTION: generate the mappability file with GENMEP\n";
         exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
     }

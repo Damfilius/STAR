@@ -33,7 +33,7 @@ private:
     uint OpenStream(string name, ifstream & stream, uint size);
     void HandleSharedMemoryException(const SharedMemoryException & exc, uint64 shmSize);
     void mapInfoLoad(string mapFilePath, mapRatings& mapInfo);
-    void processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line, mapRatings& mapInfo);
+    void processMapLine(ifstream& mapStream, string mapFilePath, char* mapCharLine, string& line, mapRatings& mapInfo);
     void parseMapLine(string& line, mapRatings& mapInfo);
 public:
     Parameters &P;

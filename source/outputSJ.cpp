@@ -65,21 +65,21 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
         uint startOverhangLeft = *oneSJ.start + *oneSJ.gap;
         uint startOverhangRight = *oneSJ.start - *oneSJ.overhangRight;
         // now we need to consult the mappability scores using these positions
-        Genome* G = RAchunk[0]->mapGen;
-        int32 ohLeftSmallIntervalIdx = G->ratingsSmall.findIntervalIdx(startOverhangLeft);
-        int32 ohRightSmallIntervalIdx = G->ratingsSmall.findIntervalIdx(startOverhangRight);
-        int32 ohLeftLargeIntervalIdx = G->ratingsLarge.findIntervalIdx(startOverhangLeft);
-        int32 ohRightLargeIntervalIdx = G->ratingsLarge.findIntervalIdx(startOverhangRight);
+        Genome G = RAchunk[0]->mapGen;
+        int32 ohLeftSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangLeft);
+        int32 ohRightSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangRight);
+        int32 ohLeftLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangLeft);
+        int32 ohRightLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangRight);
 
-        float ohLeftSmallMap = G->ratingsSmall.ratings[ohLeftSmallIntervalIdx];
-        float ohRightSmallMap = G->ratingsSmall.ratings[ohRightSmallIntervalIdx];
-        float ohLeftLargeMap = G->ratingsSmall.ratings[ohLeftLargeIntervalIdx];
-        float ohRightLargeMap = G->ratingsSmall.ratings[ohRightLargeIntervalIdx];
+        float ohLeftSmallMap = G.ratingsSmall.ratings[ohLeftSmallIntervalIdx];
+        float ohRightSmallMap = G.ratingsSmall.ratings[ohRightSmallIntervalIdx];
+        float ohLeftLargeMap = G.ratingsSmall.ratings[ohLeftLargeIntervalIdx];
+        float ohRightLargeMap = G.ratingsSmall.ratings[ohRightLargeIntervalIdx];
 
-        int32 distanceSmallLeft = abs(*oneSJ.overhangLeft - G->ratingsSmall.kmerSize);
-        int32 distanceLargeLeft = abs(*oneSJ.overhangLeft - G->ratingsLarge.kmerSize);
-        int32 distanceSmallRight = abs(*oneSJ.overhangRight - G->ratingsSmall.kmerSize);
-        int32 distanceLargeRight = abs(*oneSJ.overhangRight - G->ratingsLarge.kmerSize);
+        int32 distanceSmallLeft = abs(*oneSJ.overhangLeft - G.ratingsSmall.kmerSize);
+        int32 distanceLargeLeft = abs(*oneSJ.overhangLeft - G.ratingsLarge.kmerSize);
+        int32 distanceSmallRight = abs(*oneSJ.overhangRight - G.ratingsSmall.kmerSize);
+        int32 distanceLargeRight = abs(*oneSJ.overhangRight - G.ratingsLarge.kmerSize);
 
         float smallWeightLeft = 1 - (distanceSmallLeft + (distanceLargeLeft + distanceSmallLeft));
         float largeWeightLeft = 1 - (distanceLargeLeft + (distanceLargeLeft + distanceSmallLeft));

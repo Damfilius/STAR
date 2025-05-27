@@ -53,10 +53,10 @@ Parameters::Parameters() {//initalize parameters info
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "genomeChrSetMitochondrial", &pGe.chrSet.mitoStrings));
 
     // adding the BED file for mappability
-    parArray.push_back(new ParameterInfoVector <string> (-1, -1, "genomeMapbltySmall", &pGe.mappabilityFileSmall));
-    parArray.push_back(new ParameterInfoVector <string> (-1, -1, "genomeMapbltyLarge", &pGe.mappabilityFileLarge));
-    parArray.push_back(new ParameterInfoVector <string> (-1, -1, "mappabilityKmerSmall", &pGe.kmerSizeSmall));
-    parArray.push_back(new ParameterInfoVector <string> (-1, -1, "mappabilityKmerLarge", &pGe.kmerSizeLarge));
+    parArray.push_back(new ParameterInfoScalar <string> (-1, -1, "genomeMapbltySmall", &pGe.mappabilityFileSmall));
+    parArray.push_back(new ParameterInfoScalar <string> (-1, -1, "genomeMapbltyLarge", &pGe.mappabilityFileLarge));
+    parArray.push_back(new ParameterInfoScalar <int> (-1, -1, "mappabilityKmerSmall", &pGe.kmerSizeSmall));
+    parArray.push_back(new ParameterInfoScalar <int> (-1, -1, "mappabilityKmerLarge", &pGe.kmerSizeLarge));
 
     //read
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "readFilesType", &readFilesType));
