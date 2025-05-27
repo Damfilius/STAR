@@ -3,6 +3,10 @@
 #include "OutSJ.h"
 #include <limits.h>
 #include "ErrorWarning.h"
+#include <stdlib.h>
+
+#define REDEMPTION_THRESHOLD 6 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
+#define MAPPABILITY_THRESHOLD 0.7 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
 
 int compareUint(const void* i1, const void* i2) {//compare uint arrays
     uint s1=*( (uint*)i1 );
@@ -54,18 +58,61 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
         };
 
         //write out the junction
-        oneSJ.junctionPointer(sjChunks[icOut],0);//point to the icOut junction
+        oneSJ.junctionPointer(sjChunks[icOut], 0);//point to the icOut junction
+
+
+        // Overhang score querying
+        uint startOverhangLeft = *oneSJ.start + *oneSJ.gap;
+        uint startOverhangRight = *oneSJ.start - *oneSJ.overhangRight;
+        // now we need to consult the mappability scores using these positions
+        Genome* G = RAchunk[0]->mapGen;
+        int32 ohLeftSmallIntervalIdx = G->ratingsSmall.findIntervalIdx(startOverhangLeft);
+        int32 ohRightSmallIntervalIdx = G->ratingsSmall.findIntervalIdx(startOverhangRight);
+        int32 ohLeftLargeIntervalIdx = G->ratingsLarge.findIntervalIdx(startOverhangLeft);
+        int32 ohRightLargeIntervalIdx = G->ratingsLarge.findIntervalIdx(startOverhangRight);
+
+        float ohLeftSmallMap = G->ratingsSmall.ratings[ohLeftSmallIntervalIdx];
+        float ohRightSmallMap = G->ratingsSmall.ratings[ohRightSmallIntervalIdx];
+        float ohLeftLargeMap = G->ratingsSmall.ratings[ohLeftLargeIntervalIdx];
+        float ohRightLargeMap = G->ratingsSmall.ratings[ohRightLargeIntervalIdx];
+
+        int32 distanceSmallLeft = abs(*oneSJ.overhangLeft - G->ratingsSmall.kmerSize);
+        int32 distanceLargeLeft = abs(*oneSJ.overhangLeft - G->ratingsLarge.kmerSize);
+        int32 distanceSmallRight = abs(*oneSJ.overhangRight - G->ratingsSmall.kmerSize);
+        int32 distanceLargeRight = abs(*oneSJ.overhangRight - G->ratingsLarge.kmerSize);
+
+        float smallWeightLeft = 1 - (distanceSmallLeft + (distanceLargeLeft + distanceSmallLeft));
+        float largeWeightLeft = 1 - (distanceLargeLeft + (distanceLargeLeft + distanceSmallLeft));
+        float smallWeightRight = 1 - (distanceSmallRight + (distanceLargeRight + distanceSmallRight));
+        float largeWeightRight = 1 - (distanceLargeRight + (distanceLargeRight + distanceSmallRight));
+
+        float mappabilityLeft = (smallWeightLeft * ohLeftSmallMap) + (largeWeightLeft * ohLeftLargeMap);
+        float mappabilityRight = (smallWeightRight * ohRightSmallMap) + (largeWeightRight * ohRightLargeMap);
+
+        int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
+        int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
+
+        bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= REDEMPTION_THRESHOLD);
+        bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= REDEMPTION_THRESHOLD);
+        bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= MAPPABILITY_THRESHOLD);
+        bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= MAPPABILITY_THRESHOLD);
+
+
         //filter the junction
         bool sjFilter;
-        sjFilter=*oneSJ.annot>0 \
-                || ( ( *oneSJ.countUnique>=(uint) P.outSJfilterCountUniqueMin[(*oneSJ.motif+1)/2] \
-                    || (*oneSJ.countMultiple+*oneSJ.countUnique)>=(uint) P.outSJfilterCountTotalMin[(*oneSJ.motif+1)/2] )\
-                && *oneSJ.overhangLeft >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] \
-                && *oneSJ.overhangRight >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] \
-                && ( (*oneSJ.countMultiple+*oneSJ.countUnique)>P.outSJfilterIntronMaxVsReadN.size() || *oneSJ.gap<=(uint) P.outSJfilterIntronMaxVsReadN[*oneSJ.countMultiple+*oneSJ.countUnique-1]) );
+        sjFilter = *oneSJ.annot > 0 \
+                || ( ( *oneSJ.countUnique >= (uint) P.outSJfilterCountUniqueMin[(*oneSJ.motif+1)/2] \
+                    || (*oneSJ.countMultiple + *oneSJ.countUnique) >= (uint) P.outSJfilterCountTotalMin[(*oneSJ.motif+1)/2] )\
+                    /*
+                    If the overhang is too small we disregard the splice junction
+                    However what we want is that if the overhang is smaller than the parameter however its mappability is high (1 or within a certain threshold) we output the splice junction
+                    */
+                && ((*oneSJ.overhangLeft >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] \
+                && *oneSJ.overhangRight >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2]) || (isRedeemedLeft && isRedeemedRight)) \
+                && ( (*oneSJ.countMultiple + *oneSJ.countUnique) > P.outSJfilterIntronMaxVsReadN.size() || *oneSJ.gap <= (uint) P.outSJfilterIntronMaxVsReadN[*oneSJ.countMultiple+*oneSJ.countUnique-1]) );
 
-        if (sjFilter) {//record the junction in all SJ
-            memcpy(allSJ.data+allSJ.N*oneSJ.dataSize,sjChunks[icOut],oneSJ.dataSize);
+        if (sjFilter) { //record the junction in all SJ
+            memcpy(allSJ.data + allSJ.N * oneSJ.dataSize, sjChunks[icOut], oneSJ.dataSize);
             allSJ.N++;
             if (allSJ.N == allSJ.Nstore-1 ) {
                 /*

@@ -14,8 +14,16 @@ typedef struct mappability {
     vector<string> chrNames;
     vector<uint64> start;
     vector<uint64> end;
-    vector<int> ratings;
+    vector<float> ratings;
     int32 kmerSize;
+
+    uint findIntervalIdx(uint startingPos) {
+        for (uint i = 0; i < start.size(); i++) {
+            if (startingPos >= start[i] && startingPos < end[i]) return i;
+        }
+
+        return -1;
+    }
 } mapRatings;
 
 class Genome {
