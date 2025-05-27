@@ -15,6 +15,7 @@ typedef struct mappability {
     vector<uint64> start;
     vector<uint64> end;
     vector<int> ratings;
+    int32 kmerSize;
 } mapRatings;
 
 class Genome {
@@ -23,6 +24,9 @@ private:
     char *shmStart;
     uint OpenStream(string name, ifstream & stream, uint size);
     void HandleSharedMemoryException(const SharedMemoryException & exc, uint64 shmSize);
+    void mapInfoLoad(string mapFilePath, mapRatings& mapInfo);
+    void processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line, mapRatings& mapInfo);
+    void parseMapLine(string& line, mapRatings& mapInfo);
 public:
     Parameters &P;
     ParametersGenome &pGe;
@@ -68,7 +72,9 @@ public:
     uint genomeInsertChrIndFirst; //index of the first inserted chromosome
 
     // mappability rating parameters
-    mapRatings ratings {};
+    // we invlude mappability scores for large and small kmers in order to compute the in-between interpolated scores
+    mapRatings ratingsSmall {};
+    mapRatings ratingsLarge {};
     uint64 nMapRatings;
 
     //SuperTranscriptome genome
@@ -82,9 +88,7 @@ public:
     void genomeOutLoad();
     void chrBinFill();
     void chrInfoLoad();
-    void mapInfoLoad();
-    void processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line);
-    void parseMapLine(string& line);
+    void loadAllMappability();
     void genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*& Gout, char*& G1out);
     void loadSJDB(string &genDir);
 

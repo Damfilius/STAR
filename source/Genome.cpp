@@ -239,13 +239,23 @@ void Genome::genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*
 };
 
 
+void Genome::loadAllMappability() {
+    // sets the kmer smizes to the mappability structs
+    ratingsSmall.kmerSize = pGe.kmerSizeSmall;
+    ratingsLarge.kmerSize = pGe.kmerSizeLarge;
+
+    // loads the mappability files
+    mapInfoLoad(pGe.mappabilityFileSmall, &ratingsSmall);
+    mapInfoLoad(pGe.mappabilityFileLarge, &ratingsLarge);
+}
+
 /*
 Method for loading genmap mappability files (bedgraph format)
 */
-void Genome::mapInfoLoad() {
+void Genome::mapInfoLoad(string mapFilePath, mapRatings& mapInfo) {
 
     //load chr names
-    ifstream mapStreamIn ( (pGe.mappabilityFile).c_str() );
+    ifstream mapStreamIn ( mapFilePath.c_str() );
     if (mapStreamIn.fail()) {
         ostringstream errOut;
         errOut << "EXITING because of FATAL error, could not open file " << (pGe.mappabilityFile) <<"\n";
@@ -264,7 +274,7 @@ void Genome::mapInfoLoad() {
     }
 
     while (mapStreamIn.good()) {
-        processMapLine(mapStreamIn, mapInChar, mapLine);
+        processMapLine(mapStreamIn, mapInChar, mapLine, mapInfo);
         if (mapLine == "") break; // reached the end
     };
 
@@ -280,7 +290,7 @@ mapCharLine - buffer the lines are getting read into
 mapCharLineSecond - safety buffer in case mapCharLine is not big enough
 line - initialized to be whatever the contentes of mapCharLine are
 */
-void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, string& line) {
+void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, string& line, mapRatings& mapInfo) {
 
     mapStream.getline(mapCharLine, 1000);
     if (std::ios::fail) { // you read 1000 chars but you haven't reached end of line character yet - something is wrong
@@ -293,14 +303,14 @@ void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, string& line
     line = mapCharLine;
     if (line == "") return; // you haven't read anything
 
-    parseMapLine(line);
+    parseMapLine(line, mapInfo);
 }
 
 /*
 Genmap format
 line - line of input from the bedgraph mappability file
 */
-void Genome::parseMapLine(string& line) {
+void Genome::parseMapLine(string& line, mapRatings& mapInfo) {
     size_t prevPos = -1;
     size_t nextPos, length;
     vector<string> params;
@@ -321,8 +331,8 @@ void Genome::parseMapLine(string& line) {
     uint64 end = std::stoll(params.at(2)); // third value corresponds to the interval end pos (excluded)
     int rating = std::stoi(params.at(3)); // fourth value corresponds to the mappability score
 
-    mapRatings.chrNames.push_back(chrName);
-    mapRatings.start.push_back(start);
-    mapRatings.end.push_back(end);
-    mapRatings.ratings.push_back(rating);
+    mapInfo.chrNames.push_back(chrName);
+    mapInfo.start.push_back(start);
+    mapInfo.end.push_back(end);
+    mapInfo.ratings.push_back(rating);
 }

@@ -16,7 +16,13 @@ public:
     
     vector <string> gFastaFiles;
     vector <string> gChainFiles;
-    string mappabilityFile; // string contains file path to the mappabiility file
+
+    //* MAPPABILITY OPTIONS
+    string mappabilityFileSmall; // string contains file path to the mappabiility file with small kmer size
+    string mappabilityFileLarge; // string contains file path to the mappabiility file with large kmer size
+    int32  kmerSizeSmall; // size of the smaller kmer
+    int32  kmerSizeLarge; // size of the larger kmer
+
     //string gConsensusFile; DEPRECATED
 
     struct {
