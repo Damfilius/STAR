@@ -239,6 +239,9 @@ void Genome::genomeSequenceAllocate(uint64 nGenomeIn, uint64 &nG1allocOut, char*
 };
 
 
+/*
+Method for loading genmap mappability files (bedgraph format)
+*/
 void Genome::mapInfoLoad() {
 
     //load chr names
@@ -251,18 +254,17 @@ void Genome::mapInfoLoad() {
     };
 
     char mapInChar[1000];
-    char mapInCharSec[1000];
-
     string mapLine;
     mapStreamIn.getline(mapInChar, 1000);
     mapLine = mapInChar;
+
+    // if the headers are not specified so we reset the stream position
     if (mapLine.find("track") == std::string::npos) {
-        // not the format I expected so we reset the ifstream
         mapStreamIn.seekg(0);
     }
 
     while (mapStreamIn.good()) {
-        processMapLine(mapStreamIn, mapInChar, mapInCharSec, mapLine);
+        processMapLine(mapStreamIn, mapInChar, mapLine);
         if (mapLine == "") break; // reached the end
     };
 
@@ -272,47 +274,52 @@ void Genome::mapInfoLoad() {
     P.inOut->logMain << "Number of base ratings = " << nMapRatings <<"\n"<<flush;
 }
 
-void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, char* mapCharLineSecond, string& line) {
+/*
+mapStream - input stream from the mappability file (bedgraph)
+mapCharLine - buffer the lines are getting read into
+mapCharLineSecond - safety buffer in case mapCharLine is not big enough
+line - initialized to be whatever the contentes of mapCharLine are
+*/
+void Genome::processMapLine(ifstream& mapStream, char* mapCharLine, string& line) {
 
     mapStream.getline(mapCharLine, 1000);
-    if (std::ios::fail) {
-        mapStream.getline(mapCharLineSecond,1000);
-        if (std::ios::fail) { 
-            ostringstream errOut;
-            errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (pGe.mappabilityFile) <<"\n";
-            errOut << "SOLUTION: generate the mappability file with GENMEP\n";
-            exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
-        }
+    if (std::ios::fail) { // you read 1000 chars but you haven't reached end of line character yet - something is wrong
+        ostringstream errOut;
+        errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (pGe.mappabilityFile) <<"\n";
+        errOut << "SOLUTION: generate the mappability file with GENMEP\n";
+        exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
     }
 
     line = mapCharLine;
-    line += mapCharLineSecond;
-
-    if (line == "") return;
+    if (line == "") return; // you haven't read anything
 
     parseMapLine(line);
 }
 
+/*
+Genmap format
+line - line of input from the bedgraph mappability file
+*/
 void Genome::parseMapLine(string& line) {
-    size_t prevPos = 0;
+    size_t prevPos = -1;
     size_t nextPos, length;
     vector<string> params;
 
     while (true) {
-        nextPos = line.find('\t', prevPos);
+        nextPos = line.find('\t', prevPos+1);
         if (nextPos == std::string::npos) {
-            nextPos = line.find('\n', prevPos);
-            if (nextPos == std::string::npos) break;
+            nextPos = line.find('\n', prevPos); // you are reading the last value
+            if (nextPos == std::string::npos) break; // you read all the values
         }
         length = nextPos - prevPos;
-        string param = line.substr(prevPos, length);
+        string param = line.substr(prevPos+1, length-1); // extract the value between the 2 tabs
         params.push_back(param);
     }
     
-    string chrName = params.at(0);
-    uint64 start = std::stoll(params.at(1));
-    uint64 end = std::stoll(params.at(2));
-    int rating = std::stoi(params.at(3));
+    string chrName = params.at(0); // first value corresponds to the chromosome
+    uint64 start = std::stoll(params.at(1)); // second value corresponds to the interval start pos
+    uint64 end = std::stoll(params.at(2)); // third value corresponds to the interval end pos (excluded)
+    int rating = std::stoi(params.at(3)); // fourth value corresponds to the mappability score
 
     mapRatings.chrNames.push_back(chrName);
     mapRatings.start.push_back(start);

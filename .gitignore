@@ -22,3 +22,7 @@ source/STAR
 *.pbxproj
 *.plist
 *.xcuserstate
+
+# personal dev
+.vscode
+
