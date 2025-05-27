@@ -249,38 +249,39 @@ std::time(&timeStart);
         return;
     #endif
     //generate transcript for each window, choose the best
-    trBest =trInit; //initialize next/best
-    uint iW1=0;//index of non-empty windows
-    uint trNtotal=0; //total number of recorded transcripts
+    trBest = trInit; //initialize next/best
+    uint iW1 = 0;//index of non-empty windows
+    uint trNtotal = 0; //total number of recorded transcripts
 
-    for (uint iW=0; iW<nW; iW++) {//transcripts for all windows
+    for (uint iW = 0; iW < nW; iW++) {//transcripts for all windows
 
-        if (nWA[iW]==0) continue; //the window does not contain any aligns because it was merged with other windows
+        if (nWA[iW] == 0) continue; //the window does not contain any aligns because it was merged with other windows
 
 //         {//debug
 //             if ( WA[iW][0][WA_iFrag]==WA[iW][nWA[iW]-1][WA_iFrag] ) continue;
 //         };
 //
-        if (WlastAnchor[iW]<nWA[iW]) {
-            WA[ iW ][ WlastAnchor[iW] ][ WA_Anchor]=2; //mark the last anchor
+        if (WlastAnchor[iW] < nWA[iW]) {
+            WA[ iW ][ WlastAnchor[iW] ][ WA_Anchor] = 2; // mark the last anchor
         };
 
-        for (uint ii=0;ii<nWA[iW];ii++) WAincl[ii]=false; //initialize mask
+        for (uint ii=0; ii < nWA[iW]; ii++) WAincl[ii]=false; // initialize mask
 
-        trA=*trInit; //that one is initialized
+        trA = *trInit; //that one is initialized
         trA.Chr = WC[iW][WC_Chr];
         trA.Str = WC[iW][WC_Str];
         trA.roStr = revertStrand ? 1-trA.Str : trA.Str; //original strand of the read
         trA.maxScore=0;
 
-        trAll[iW1]=trArrayPointer+trNtotal;
-        if (trNtotal+P.alignTranscriptsPerWindowNmax >= P.alignTranscriptsPerReadNmax) {
+        trAll[iW1] = trArrayPointer + trNtotal;
+        if (trNtotal + P.alignTranscriptsPerWindowNmax >= P.alignTranscriptsPerReadNmax) {
             P.inOut->logMain << "WARNING: not enough space allocated for transcript. Did not process all windows for read "<< readName+1 <<endl;
             P.inOut->logMain <<"   SOLUTION: increase alignTranscriptsPerReadNmax and re-run\n" << flush;
             break;
         };
-        *(trAll[iW1][0])=trA;
-        nWinTr[iW1]=0; //initialize number of transcripts per window
+
+        *(trAll[iW1][0]) = trA;
+        nWinTr[iW1] = 0; //initialize number of transcripts per window
 
 
     #ifdef COMPILE_FOR_LONG_READS

@@ -6,37 +6,59 @@
 // #include "stitchGapIndel.cpp"
 
 
+/*
+rAend - 
+gAend - 
+rBstart - start index of the seed within the read
+gBstart - start index of the seed within the genome
+L - length of the alignment
+iFragB - fragment count of the alignment
+sjAB - is on a splice junction?
+P - parameters
+R - read
+mapGen - map-to-genome structure
+trA - transcript
+outFilterMismatchNmaxTotal - 
+
+Called when the transcript has already >= 1 exons.
+The subequent exons need to be stitched together
+*/
 intScore stitchAlignToTranscript(uint rAend, uint gAend, uint rBstart, uint gBstart, uint L, uint iFragB, uint sjAB, Parameters& P, char* R, Genome &mapGen, Transcript *trA, const uint outFilterMismatchNmaxTotal) {
     //stitch together A and B, extend in the gap, returns max score
 
-    if (trA->nExons>=MAX_N_EXONS)
+    //! exceeded the maximum number of exons you can have per window
+    if (trA->nExons >= MAX_N_EXONS)
         return -1000010;    
     
-    char *G=mapGen.G;
-    int Score=0;
+    char *G = mapGen.G;
+    int Score = 0;
 
-    if (sjAB!=((uint) -1) && trA->exons[trA->nExons-1][EX_sjA]==sjAB \
-            && trA->exons[trA->nExons-1][EX_iFrag]==iFragB && rBstart==rAend+1 && gAend+1<gBstart ) {//simple stitching if junction belongs to a database
-        if (mapGen.sjdbMotif[sjAB]==0 && (L<=mapGen.sjdbShiftRight[sjAB] || trA->exons[trA->nExons-1][EX_L]<=mapGen.sjdbShiftLeft[sjAB]) ) {
+    //! checks if the current alignment follows the last exon in the transcript and whther they lie on the same junction
+    if (sjAB != ((uint) -1) && trA->exons[trA->nExons-1][EX_sjA] == sjAB \
+            && trA->exons[trA->nExons-1][EX_iFrag] == iFragB && rBstart == rAend+1 && gAend+1 < gBstart ) { //simple stitching if junction belongs to a database
+
+        if (mapGen.sjdbMotif[sjAB] == 0 && (L <= mapGen.sjdbShiftRight[sjAB] || trA->exons[trA->nExons-1][EX_L] <= mapGen.sjdbShiftLeft[sjAB]) ) {
             return -1000006; //too large repeats around non-canonical junction
         };
+
         trA->exons[trA->nExons][EX_L] = L; //new exon length
         trA->exons[trA->nExons][EX_R] = rBstart; //new exon r-start
         trA->exons[trA->nExons][EX_G] = gBstart; //new exon g-start
-        trA->canonSJ[trA->nExons-1]=mapGen.sjdbMotif[sjAB]; //mark sj-db
-        trA->shiftSJ[trA->nExons-1][0]=mapGen.sjdbShiftLeft[sjAB];
-        trA->shiftSJ[trA->nExons-1][1]=mapGen.sjdbShiftRight[sjAB];
-        trA->sjAnnot[trA->nExons-1]=1;
-        trA->sjStr[trA->nExons-1]=mapGen.sjdbStrand[sjAB];;
+        trA->canonSJ[trA->nExons-1] = mapGen.sjdbMotif[sjAB]; //mark sj-db
+        trA->shiftSJ[trA->nExons-1][0] = mapGen.sjdbShiftLeft[sjAB];
+        trA->shiftSJ[trA->nExons-1][1] = mapGen.sjdbShiftRight[sjAB];
+        trA->sjAnnot[trA->nExons-1] = 1;
+        trA->sjStr[trA->nExons-1] = mapGen.sjdbStrand[sjAB];;
         trA->nExons++;
-        trA->nMatch+=L;
-        for (uint ii=rBstart;ii<rBstart+L;ii++) Score+=scoreMatch; //add QS for mapped portions
-        Score+=P.pGe.sjdbScore;
-    } else {//general stitching
-        trA->sjAnnot[trA->nExons-1]=0;
-        trA->sjStr[trA->nExons-1]=0;
+        trA->nMatch += L;
+        for (uint ii=rBstart; ii<rBstart+L; ii++) Score += scoreMatch; //add QS for mapped portions
+        Score += P.pGe.sjdbScore; // splice junctions carry a user defined score
 
-        if (trA->exons[trA->nExons-1][EX_iFrag]==iFragB) {//stitch aligns on the same fragment
+    } else { //general stitching - no splice junction between the current alignment and the last exon in the transcript
+        trA->sjAnnot[trA->nExons-1] = 0;
+        trA->sjStr[trA->nExons-1] = 0;
+
+        if (trA->exons[trA->nExons-1][EX_iFrag] == iFragB) {//stitch aligns on the same fragment
             uint gBend=gBstart+L-1;
             uint rBend=rBstart+L-1;
 
@@ -50,55 +72,57 @@ intScore stitchAlignToTranscript(uint rAend, uint gAend, uint rBstart, uint gBst
 //             };
 
             //check if r-overlapping fully and exit
-            if (rBend<=rAend) return -1000001;
-            if (gBend<=gAend && trA->exons[trA->nExons-1][EX_iFrag]==iFragB) return -1000002;
+            if (rBend <= rAend) return -1000001;
+            if (gBend <= gAend && trA->exons[trA->nExons-1][EX_iFrag] == iFragB) return -1000002;
 
-            //shift the B 5' if overlaps A 3'
-            if (rBstart<=rAend) {
-                gBstart+=rAend-rBstart+1;
-                rBstart=rAend+1;
-                L=rBend-rBstart+1;
+            // shift the B 5' if overlaps A 3'
+            //! IN OTHER WORDS START OF B OVERLAPS WITH THE END OF A - WE SHIFT B TO THE RIGHT BOTH ON THE READ AND ON THE GENOME SO THAT THEY DONT OVERLAP
+            if (rBstart <= rAend) {
+                gBstart += rAend - rBstart + 1;
+                rBstart = rAend + 1;
+                L = rBend - rBstart + 1; // recompute the length (shouldn't be necessary though)
             };
 
-            for (uint ii=rBstart;ii<=rBend;ii++) Score+=scoreMatch; //add QS for mapped portions
+            for (uint ii=rBstart; ii<=rBend; ii++) Score += scoreMatch; //add QS for mapped portions
 
-            int gGap=gBstart-gAend-1; //could be < 0 for insertions
-            int rGap=rBstart-rAend-1;//>0 always since we removed overlap
+            int gGap = gBstart - gAend-1; //could be < 0 for insertions
+            int rGap = rBstart - rAend-1; //>0 always since we removed overlap
 
-            uint nMatch=L;
-            uint nMM=0;
-            uint Del=0, Ins=0;
-            uint nIns=0, nDel=0;
-            int jR=0; //junction location in R-space
-            int jCan=999; //canonical junction type
-            uint gBstart1=gBstart-rGap-1;//the last base of the intron if all read gap belongs to acceptor, i.e. jR=0
-
+            uint nMatch = L;
+            uint nMM = 0;
+            uint Del = 0, Ins = 0;
+            uint nIns = 0, nDel = 0;
+            int jR = 0; //junction location in R-space
+            int jCan = 999; //canonical junction type
+            uint gBstart1 = gBstart - rGap - 1;//the last base of the intron if all read gap belongs to acceptor, i.e. jR=0
 
             // check all the different combinations of gGap and rGap
-            if ( gGap==0 && rGap==0 ) {//just joined the pieces, w/o stiching or gaps
+            if ( gGap == 0 && rGap == 0 ) {//just joined the pieces, w/o stiching or gaps
                 //do nothing for now
-            } else if ( gGap>0 && rGap>0 && rGap==gGap ) {//no gaps, just try to fill space
+                //TODO possible place to modify the code
+            } else if ( gGap > 0 && rGap > 0 && rGap == gGap ) { //no gaps, just try to fill space
                 //simple stitching, assuming no insertion in the read
 
-                for (int ii=1;ii<=rGap;ii++) {
-                    if (G[gAend+ii]<4 && R[rAend+ii]<4) {//only score genome bases that are not Ns
-                        if ( R[rAend+ii]==G[gAend+ii] ) {
-                            Score+=scoreMatch;
+                for (int ii=1; ii<=rGap; ii++) {
+                    if (G[gAend+ii] < 4 && R[rAend+ii] < 4) {//only score genome bases that are not Ns
+                        if ( R[rAend+ii] == G[gAend+ii] ) {
+                            Score += scoreMatch;
                             nMatch++;
                         } else {
-                            Score-=scoreMatch;
+                            Score -= scoreMatch;
                             nMM++;
                         };
                     };
                 };
 
-            } else if ( gGap>rGap ) {//genomic gap (Deletion)
+            } else if ( gGap > rGap ) {//genomic gap (Deletion)
 
-                nDel=1;
-                Del=gGap-rGap; //gGap>0 here
+                nDel = 1;
+                Del = gGap - rGap; //gGap>0 here
 
-                if (Del>P.alignIntronMax && P.alignIntronMax>0) {
-                    return -1000003; //large gaps not allowed
+                //! gap larger than the maximum intron size
+                if (Del > P.alignIntronMax && P.alignIntronMax > 0) {
+                    return -1000003; // large gaps not allowed
                 };
 
                 int Score1=0;
@@ -252,26 +276,27 @@ intScore stitchAlignToTranscript(uint rAend, uint gAend, uint rBstart, uint gBst
                     };
                 };
 
-            } else if ( rGap>gGap ) {//insertion: if also gGap>0, need to stitch
-                Ins=rGap-gGap;
+            } else if ( rGap > gGap ) { //insertion: if also gGap>0, need to stitch
+                Ins = rGap-gGap;
                 nIns=1;
-                if (gGap==0) {//simple insertion, no need to stitch
+
+                if (gGap == 0) {//simple insertion, no need to stitch
                     jR=0;
-                } else if (gGap<0) {//overlapping seeds: reduce the score
+                } else if (gGap < 0) {//overlapping seeds: reduce the score
                     jR=0;
-                    for (int ii=0; ii<-gGap; ii++) {
+                    for (int ii=0; ii < -gGap; ii++) {
                         Score -= scoreMatch;
                     };
-                } else {//stitch: define the exon boundary jR
-                    int Score1=0; int maxScore1=0;
-                    for (int jR1=1;jR1<=gGap;jR1++) {//scan to the right to find the best score
+                } else { //stitch: define the exon boundary jR
+                    int Score1 = 0; int maxScore1 = 0;
+                    for (int jR1 = 1; jR1 <= gGap; jR1++) { //scan to the right to find the best score
 
-                        if (G[gAend+jR1]<4) {//only penalize goog genome bases
-                            Score1+=( R[rAend+jR1]==G[gAend+jR1] ) ? scoreMatch:-scoreMatch;
-                            Score1+=( R[rAend+Ins+jR1]==G[gAend+jR1] ) ? -scoreMatch:+scoreMatch;
+                        if (G[gAend+jR1] < 4) { //only penalize goog genome bases
+                            Score1 += ( R[rAend+jR1]==G[gAend+jR1] ) ? scoreMatch:-scoreMatch;
+                            Score1 += ( R[rAend+Ins+jR1]==G[gAend+jR1] ) ? -scoreMatch:+scoreMatch;
                         };
 
-                        if (Score1>maxScore1 || (Score1==maxScore1 && P.alignInsertionFlush.flushRight)) {//equal sign (>=) flushes insertions to the right
+                        if (Score1 > maxScore1 || (Score1==maxScore1 && P.alignInsertionFlush.flushRight)) {//equal sign (>=) flushes insertions to the right
                             maxScore1=Score1;
                             jR=jR1;
                         };
@@ -311,14 +336,14 @@ intScore stitchAlignToTranscript(uint rAend, uint gAend, uint rBstart, uint gBst
 //             if ( Score>0 && nMM<=200 )
 
         #else
-            if ( (trA->nMM + nMM)<=outFilterMismatchNmaxTotal  \
-                         && ( jCan<0 || (jCan<7 && nMM<= (uint) P.alignSJstitchMismatchNmax[(jCan+1)/2]) ) )
+            if ( (trA->nMM + nMM) <= outFilterMismatchNmaxTotal  \
+                         && ( jCan<0 || (jCan < 7 && nMM <= (uint) P.alignSJstitchMismatchNmax[(jCan+1)/2]) ) )
         #endif
             {//stitching worked only if there no mis-matches for non-GT/AG junctions
                 trA->nMM += nMM;
                 trA->nMatch += nMatch;
 
-                if (Del>=P.alignIntronMin) {
+                if (Del >= P.alignIntronMin) {
                     trA->nGap += nDel;
                     trA->lGap += Del;
                 } else {
@@ -328,8 +353,8 @@ intScore stitchAlignToTranscript(uint rAend, uint gAend, uint rBstart, uint gBst
 
                 //modify exons
                 if (Del==0 && Ins==0) {//no gap => no new exon, extend the boundary of the previous exon
-                    trA->exons[trA->nExons-1][EX_L] += rBend-rAend;
-                } else if (Del>0) { //deletion:ca only have Del> or Ins>0
+                    trA->exons[trA->nExons-1][EX_L] += rBend - rAend;
+                } else if (Del > 0) { //deletion:ca only have Del> or Ins>0
                     trA->exons[trA->nExons-1][EX_L] += jR; //correct the previous exon boundary
                     trA->exons[trA->nExons][EX_L] = rBend-rAend-jR; //new exon length
                     trA->exons[trA->nExons][EX_R] = rAend+jR+1; //new exon r-start
