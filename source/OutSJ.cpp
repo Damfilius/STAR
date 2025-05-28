@@ -87,7 +87,7 @@ void Junction::outputStream(ostream &outStream) {
     uint sjChr=genOut.chrBin[*start >> genOut.pGe.gChrBinNbits];
     outStream << genOut.chrName.at(sjChr) <<"\t"<< *start + 1 - genOut.chrStart[sjChr] <<"\t"<<*start + *gap - genOut.chrStart[sjChr] \
             <<"\t"<< int(*strand) <<"\t"<< int(*motif) <<"\t"<< int (*annot) <<"\t"<< *countUnique <<"\t"<< *countMultiple \
-            <<"\t"<< *overhangLeft << "\t" << isReedemed << endl;
+            <<"\t"<< *overhangLeft << "\t" << *isReedemed << endl;
 };
 
 void Junction::collapseOneSJ(char* isj1P, char* isjP, Parameters& P) {//collapse isj junction into isj1: increase counts in isj1. choose max overhangs, motif, annot
