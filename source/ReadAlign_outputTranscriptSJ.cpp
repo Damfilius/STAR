@@ -14,7 +14,7 @@ void ReadAlign::outputTranscriptSJ(Transcript const &trOut, uint nTrOut, OutSJ *
     for (uint iex=0;iex<trOut.nExons-1;iex++) {//record all junctions
         if (trOut.canonSJ[iex]>=0) {//only record junctions, not indels or mate gap
             chunkOutSJ->oneSJ.junctionPointer(chunkOutSJ->data, chunkOutSJ->N);//get pointer to an empty junction in the data array
-            *chunkOutSJ->oneSJ.start = trOut.exons[iex][EX_G]+trOut.exons[iex][EX_L]; //start of the intron
+            *chunkOutSJ->oneSJ.start = trOut.exons[iex][EX_G] + trOut.exons[iex][EX_L]; // start of the left exon + length of the exon
             *chunkOutSJ->oneSJ.gap = trOut.exons[iex+1][EX_G] - *chunkOutSJ->oneSJ.start; // basically the gap left by the intron (should be equal to intron length - 1)
             //overhangs: basic method
             //*chunkOutSJ->oneSJ.overhangLeft  = (uint32) trOut.exons[iex][EX_L];//TODO calculate the lengh of overhangs taking into account indels

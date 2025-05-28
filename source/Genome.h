@@ -11,14 +11,15 @@
 class GTF;
 
 typedef struct mappability {
+    vector<string> chrs;
     vector<uint32> start;
     vector<uint32> end;
     vector<float> ratings;
     int32 kmerSize;
 
-    uint32 findIntervalIdx(uint32 startingPos) {
+    uint32 findIntervalIdx(string chr, uint32 startingPos) {
         for (uint32 i = 0; i < start.size(); i++) {
-            if (startingPos >= start[i] && startingPos < end[i]) return i;
+            if (chrs[i] == chr && startingPos >= start[i] && startingPos < end[i]) return i;
         }
 
         return -1;

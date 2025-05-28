@@ -5,20 +5,31 @@
 #include "ErrorWarning.h"
 #include <stdlib.h>
 
-#define REDEMPTION_THRESHOLD 6 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
-#define MAPPABILITY_THRESHOLD 0.7 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
+#define REDEMPTION_THRESHOLD 10 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
+#define MAPPABILITY_THRESHOLD 0.5 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
 
 bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
     if (G.pGe.mappabilityFileSmall == "" || G.pGe.mappabilityFileLarge == "") return false;
 
     // Overhang score querying
-    uint32 startOverhangLeft = *oneSJ.start + *oneSJ.gap;
-    uint32 startOverhangRight = *oneSJ.start - *oneSJ.overhangRight;
+    uint32 startOverhangRight = *oneSJ.start + *oneSJ.gap;
+    uint32 startOverhangLeft = *oneSJ.start - *oneSJ.overhangLeft;
 
-    uint32 ohLeftSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangLeft);
-    uint32 ohRightSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangRight);
-    uint32 ohLeftLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangLeft);
-    uint32 ohRightLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangRight);
+    uint chrRightIdx = G.chrBin[startOverhangRight >> G.pGe.gChrBinNbits];
+    uint chrLeftIdx = G.chrBin[startOverhangLeft >> G.pGe.gChrBinNbits];
+    string chrRight = G.chrName.at(chrRightIdx);
+    string chrLeft = G.chrName.at(chrLeftIdx);
+
+    uint32 ohChrRightStart = startOverhangRight + 1 - G.chrStart[chrRightIdx];
+    uint32 ohChrLeftStart = startOverhangLeft + 1 - G.chrStart[chrLeftIdx];
+
+    uint32 ohLeftSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(chrLeft, ohChrLeftStart);
+    uint32 ohRightSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(chrRight, ohChrRightStart);
+    uint32 ohLeftLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(chrLeft, ohChrLeftStart);
+    uint32 ohRightLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(chrRight, ohChrRightStart);
+
+    // cannot find the associated mapability score so just return false
+    if (ohLeftSmallIntervalIdx == -1 || ohRightSmallIntervalIdx == -1 || ohLeftLargeIntervalIdx == - 1 || ohRightLargeIntervalIdx == -1) return false;
 
     float ohLeftSmallMap = G.ratingsSmall.ratings[ohLeftSmallIntervalIdx];
     float ohRightSmallMap = G.ratingsSmall.ratings[ohRightSmallIntervalIdx];
@@ -30,10 +41,10 @@ bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
     uint32 distanceSmallRight = abs(*oneSJ.overhangRight - G.ratingsSmall.kmerSize);
     uint32 distanceLargeRight = abs(*oneSJ.overhangRight - G.ratingsLarge.kmerSize);
 
-    float smallWeightLeft = 1 - (distanceSmallLeft + (distanceLargeLeft + distanceSmallLeft));
-    float largeWeightLeft = 1 - (distanceLargeLeft + (distanceLargeLeft + distanceSmallLeft));
-    float smallWeightRight = 1 - (distanceSmallRight + (distanceLargeRight + distanceSmallRight));
-    float largeWeightRight = 1 - (distanceLargeRight + (distanceLargeRight + distanceSmallRight));
+    float smallWeightLeft = 1 - (distanceSmallLeft / (distanceLargeLeft + distanceSmallLeft));
+    float largeWeightLeft = 1 - (distanceLargeLeft / (distanceLargeLeft + distanceSmallLeft));
+    float smallWeightRight = 1 - (distanceSmallRight / (distanceLargeRight + distanceSmallRight));
+    float largeWeightRight = 1 - (distanceLargeRight / (distanceLargeRight + distanceSmallRight));
 
     float mappabilityLeft = (smallWeightLeft * ohLeftSmallMap) + (largeWeightLeft * ohLeftLargeMap);
     float mappabilityRight = (smallWeightRight * ohRightSmallMap) + (largeWeightRight * ohRightLargeMap);
@@ -43,6 +54,7 @@ bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
 
     bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= REDEMPTION_THRESHOLD);
     bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= REDEMPTION_THRESHOLD);
+
     bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= MAPPABILITY_THRESHOLD);
     bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= MAPPABILITY_THRESHOLD);
 
@@ -103,8 +115,10 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
 
 
         //filter the junction
-        bool isRedeemed = isSJRedeemed(oneSJ, P, RAchunk[0]->mapGen);
-        *oneSJ.isReedemed = isRedeemed;
+        bool isRedeemed = isSJRedeemed(oneSJ, P, RAchunk[0]->mapGen); 
+        *oneSJ.strand = isRedeemed ? '+' : '-'; // replacing the strand with the redemption flag because I cannot get my own output to work...
+        // bool isRedeemed = false;
+        // *oneSJ.isRedeemed = isRedeemed;
         bool sjFilter;
         sjFilter = *oneSJ.annot > 0 \
                 || ( ( *oneSJ.countUnique >= (uint) P.outSJfilterCountUniqueMin[(*oneSJ.motif+1)/2] \
@@ -130,9 +144,6 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
                 allSJ.dataSizeIncrease();
                 P.inOut->logMain << "Increased the size of chunkOutSJ to " << allSJ.Nstore <<'\n';
             };
-            if (isRedeemed) {
-                P.inOut->logMain << "REDEEMED JUNCTION" << '\n';
-            }
         };
 
         sjChunks[icOut] += oneSJ.dataSize;//shift icOut-chunk by one junction

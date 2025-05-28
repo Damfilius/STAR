@@ -205,7 +205,7 @@ typedef uint8_t uint8;
 
 #define EX_R 0
 #define EX_G 1
-#define EX_L 2
+#define EX_L 2 // exon left
 #define EX_iFrag 3
 #define EX_sjA 4
 #define EX_SIZE 5
