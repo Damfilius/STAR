@@ -532,6 +532,14 @@ outSJfilterIntronMaxVsReadN        50000 100000 200000
                                 i.e. by default junctions supported by 1 read can have gaps <=50000b, by 2 reads: <=100000b, by 3 reads: <=200000. by >=4 reads any gap <=alignIntronMax
                                 does not apply to annotated junctions
 
+genomeMapbltySmall ./genomeMapbltySmall.bedgraph
+
+genomeMapbltyLarge ./genomeMapbltyLarge.bedgraph
+
+mappabilityKmerSmall 20
+
+mappabilityKmerLarge 30
+
 ### Scoring
 scoreGap                     0
     int: splice junction penalty (independent on intron motif)

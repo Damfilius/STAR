@@ -252,58 +252,45 @@ void Genome::loadAllMappability() {
 /*
 Method for loading genmap mappability files (bedgraph format)
 */
-void Genome::mapInfoLoad(string mapFilePath, mapRatings& mapInfo) {
+void Genome::mapInfoLoad(string& mapFilePath, mapRatings& mapInfo) {
 
     //load chr names
-    ifstream mapStreamIn ( mapFilePath.c_str() );
-    if (mapStreamIn.fail()) {
+    ifstream mapStreamIn;
+    mapStreamIn.open(mapFilePath);
+
+    if (mapStreamIn.fail() || !mapStreamIn.is_open()) {
         ostringstream errOut;
         errOut << "EXITING because of FATAL error, could not open file " << (mapFilePath) <<"\n";
         errOut << "SOLUTION: re-generate mappability ratings for the genome\n";
         exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
     };
 
-    char mapInChar[1000];
-    string mapLine;
-    mapStreamIn.getline(mapInChar, 1000);
-    mapLine = mapInChar;
+    char line[1000];
+    mapStreamIn.getline(line, 1000);
+    string strLine = line;
 
     // if the headers are not specified so we reset the stream position
-    if (mapLine.find("track") == std::string::npos) {
+    if (strLine.find("track") == std::string::npos) {
         mapStreamIn.seekg(0);
     }
 
-    while (mapStreamIn.good()) {
-        processMapLine(mapStreamIn, mapFilePath, mapInChar, mapLine, mapInfo);
-        if (mapLine == "") break; // reached the end
+    while (mapStreamIn.getline(line, 1000)) {
+
+        if ((mapStreamIn.rdstate() & std::ifstream::failbit) != 0) { // there was an error performing getline
+            ostringstream errOut;
+            errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (mapFilePath) <<"\n";
+            errOut << "SOLUTION: generate the mappability file with GENMEP\n";
+            mapStreamIn.close();
+            exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
+        }
+
+        strLine = line;
+        parseMapLine(strLine, mapInfo);
     };
 
     mapStreamIn.close();
     nMapRatings = mapInfo.start.size();
-
     P.inOut->logMain << "Number of base ratings = " << nMapRatings <<"\n"<<flush;
-}
-
-/*
-mapStream - input stream from the mappability file (bedgraph)
-mapCharLine - buffer the lines are getting read into
-mapCharLineSecond - safety buffer in case mapCharLine is not big enough
-line - initialized to be whatever the contentes of mapCharLine are
-*/
-void Genome::processMapLine(ifstream& mapStream, string mapFilePath, char* mapCharLine, string& line, mapRatings& mapInfo) {
-
-    mapStream.getline(mapCharLine, 1000);
-    if ((mapStream.rdstate() & std::ifstream::failbit) != 0) { // you read 1000 chars but you haven't reached end of line character yet - something is wrong
-        ostringstream errOut;
-        errOut << "EXITING because of FATAL error, mapping file format is unsupported " << (mapFilePath) <<"\n";
-        errOut << "SOLUTION: generate the mappability file with GENMEP\n";
-        exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
-    }
-
-    line = mapCharLine;
-    if (line == "") return; // you haven't read anything
-
-    parseMapLine(line, mapInfo);
 }
 
 /*
@@ -311,28 +298,32 @@ Genmap format
 line - line of input from the bedgraph mappability file
 */
 void Genome::parseMapLine(string& line, mapRatings& mapInfo) {
-    size_t prevPos = -1;
-    size_t nextPos, length;
-    vector<string> params;
+    std::vector<std::string> params;
+    line = line + "\n";
+    std::string param = "";
 
-    while (true) {
-        nextPos = line.find('\t', prevPos+1);
-        if (nextPos == std::string::npos) {
-            nextPos = line.find('\n', prevPos); // you are reading the last value
-            if (nextPos == std::string::npos) break; // you read all the values
-        }
-        length = nextPos - prevPos;
-        string param = line.substr(prevPos+1, length-1); // extract the value between the 2 tabs
-        params.push_back(param);
+    for (int i = 0; i < line.size(); i++) {
+
+      if (line[i] == '\n') {
+        if (param != "") params.push_back(param);
+        break;
+      }
+
+      if (line[i] == '\t' || line[i] == '\n') {
+        if (param != "") params.push_back(param);
+
+        param = "";
+        continue;
+      };
+
+      param += line[i];
     }
-    
-    string chrName = params.at(0); // first value corresponds to the chromosome
-    uint64 start = std::stoll(params.at(1)); // second value corresponds to the interval start pos
-    uint64 end = std::stoll(params.at(2)); // third value corresponds to the interval end pos (excluded)
-    int rating = std::stoi(params.at(3)); // fourth value corresponds to the mappability score
 
-    mapInfo.chrNames.push_back(chrName);
+    unsigned int start = std::stoul(params.at(1)); // second value corresponds to the interval start position
+    unsigned int end = std::stoul(params.at(2)); // second value corresponds to the interval end position
+    float rating = std::stof(params.at(3)); // fourth value corresponds to the mappability score
+
     mapInfo.start.push_back(start);
-    mapInfo.end.push_back(end);
+    mapInfo.end.push_back(start);
     mapInfo.ratings.push_back(rating);
 }

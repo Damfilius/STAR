@@ -326,9 +326,9 @@ void Parameters::inputParameters (int argInN, char* argIn[]) {//input parameters
 
     scanAllLines(parStream, 0, -1);
     for (uint ii=0; ii<parArray.size(); ii++) {
-        if (parArray[ii]->inputLevel<0) {
+        if (parArray[ii]->inputLevel < 0) {
             ostringstream errOut;
-            errOut <<"BUG: DEFAULT parameter value not defined: "<<parArray[ii]->nameString;
+            errOut <<"BUG: DEFAULT parameter value not defined: " << parArray[ii]->nameString;
             exitWithError(errOut.str(), std::cerr, inOut->logMain, EXIT_CODE_PARAMETER, *this);
         };
     };
@@ -1265,7 +1265,7 @@ int Parameters::scanOneLine (string &lineIn, int inputLevel, int inputLevelReque
             exitWithError(errOut.str(), std::cerr, inOut->logMain, EXIT_CODE_PARAMETER, *this);
         } else {//read values
             parArray[iPar]->inputValues(lineInStream);
-            parArray[iPar]->inputLevel=inputLevel;
+            parArray[iPar]->inputLevel = inputLevel;
             if ( inOut->logMain.good() ) {
                 inOut->logMain << setiosflags(ios::left) << setw(PAR_NAME_PRINT_WIDTH) << parArray[iPar]->nameString << *(parArray[iPar]);
                 if ( parArray[iPar]->inputLevel > 0 ) inOut->logMain <<"     ~RE-DEFINED";

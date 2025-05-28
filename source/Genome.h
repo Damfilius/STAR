@@ -11,14 +11,13 @@
 class GTF;
 
 typedef struct mappability {
-    vector<string> chrNames;
-    vector<uint64> start;
-    vector<uint64> end;
+    vector<uint32> start;
+    vector<uint32> end;
     vector<float> ratings;
     int32 kmerSize;
 
-    uint findIntervalIdx(uint startingPos) {
-        for (uint i = 0; i < start.size(); i++) {
+    uint32 findIntervalIdx(uint32 startingPos) {
+        for (uint32 i = 0; i < start.size(); i++) {
             if (startingPos >= start[i] && startingPos < end[i]) return i;
         }
 
@@ -32,8 +31,7 @@ private:
     char *shmStart;
     uint OpenStream(string name, ifstream & stream, uint size);
     void HandleSharedMemoryException(const SharedMemoryException & exc, uint64 shmSize);
-    void mapInfoLoad(string mapFilePath, mapRatings& mapInfo);
-    void processMapLine(ifstream& mapStream, string mapFilePath, char* mapCharLine, string& line, mapRatings& mapInfo);
+    void mapInfoLoad(string& mapFilePath, mapRatings& mapInfo);
     void parseMapLine(string& line, mapRatings& mapInfo);
 public:
     Parameters &P;

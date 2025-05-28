@@ -15,12 +15,14 @@ public:
     const static uint countMultipleP=countUniqueP+sizeof(uint32);
     const static uint overhangLeftP=countMultipleP+sizeof(uint32);
     const static uint overhangRightP=overhangLeftP+sizeof(uint16);
+    const static uint isReedemedP = overhangRightP+sizeof(uint16);
 
     uint *start;
     uint32 *gap;
     char *strand, *motif, *annot;
     uint32 *countUnique, *countMultiple;
     uint16 *overhangLeft, *overhangRight;
+    bool *isReedemed;
 
     const static uint dataSize=overhangRightP+sizeof(uint16);
 

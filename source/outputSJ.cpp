@@ -8,6 +8,47 @@
 #define REDEMPTION_THRESHOLD 6 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
 #define MAPPABILITY_THRESHOLD 0.7 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
 
+bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
+    if (G.pGe.mappabilityFileSmall == "" || G.pGe.mappabilityFileLarge == "") return false;
+
+    // Overhang score querying
+    uint32 startOverhangLeft = *oneSJ.start + *oneSJ.gap;
+    uint32 startOverhangRight = *oneSJ.start - *oneSJ.overhangRight;
+
+    uint32 ohLeftSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangLeft);
+    uint32 ohRightSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangRight);
+    uint32 ohLeftLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangLeft);
+    uint32 ohRightLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangRight);
+
+    float ohLeftSmallMap = G.ratingsSmall.ratings[ohLeftSmallIntervalIdx];
+    float ohRightSmallMap = G.ratingsSmall.ratings[ohRightSmallIntervalIdx];
+    float ohLeftLargeMap = G.ratingsSmall.ratings[ohLeftLargeIntervalIdx];
+    float ohRightLargeMap = G.ratingsSmall.ratings[ohRightLargeIntervalIdx];
+
+    uint32 distanceSmallLeft = abs(*oneSJ.overhangLeft - G.ratingsSmall.kmerSize);
+    uint32 distanceLargeLeft = abs(*oneSJ.overhangLeft - G.ratingsLarge.kmerSize);
+    uint32 distanceSmallRight = abs(*oneSJ.overhangRight - G.ratingsSmall.kmerSize);
+    uint32 distanceLargeRight = abs(*oneSJ.overhangRight - G.ratingsLarge.kmerSize);
+
+    float smallWeightLeft = 1 - (distanceSmallLeft + (distanceLargeLeft + distanceSmallLeft));
+    float largeWeightLeft = 1 - (distanceLargeLeft + (distanceLargeLeft + distanceSmallLeft));
+    float smallWeightRight = 1 - (distanceSmallRight + (distanceLargeRight + distanceSmallRight));
+    float largeWeightRight = 1 - (distanceLargeRight + (distanceLargeRight + distanceSmallRight));
+
+    float mappabilityLeft = (smallWeightLeft * ohLeftSmallMap) + (largeWeightLeft * ohLeftLargeMap);
+    float mappabilityRight = (smallWeightRight * ohRightSmallMap) + (largeWeightRight * ohRightLargeMap);
+
+    int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
+    int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
+
+    bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= REDEMPTION_THRESHOLD);
+    bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= REDEMPTION_THRESHOLD);
+    bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= MAPPABILITY_THRESHOLD);
+    bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= MAPPABILITY_THRESHOLD);
+
+    return isRedeemedLeft && isRedeemedRight;
+}
+
 int compareUint(const void* i1, const void* i2) {//compare uint arrays
     uint s1=*( (uint*)i1 );
     uint s2=*( (uint*)i2 );
@@ -43,62 +84,27 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
     while (true) {
         int icOut=-1;//chunk from which the junction is output
         for (int ic=0;ic<P.runThreadN;ic++) {//scan through all chunks, find the "smallest" junction
-            if ( *(uint*)(sjChunks[ic])<ULONG_MAX && (icOut==-1 ||compareSJ((void*) sjChunks[ic], (void*) sjChunks[icOut])<0 ) ) {
+            if ( *(uint*)(sjChunks[ic]) < ULONG_MAX && (icOut==-1 || compareSJ((void*) sjChunks[ic], (void*) sjChunks[icOut]) < 0 ) ) {
                     icOut=ic;
                 };
         };
 
-        if (icOut<0) break; //no more junctions to output
+        if (icOut<0) break; // no more junctions to output
 
-        for (int ic=0;ic<P.runThreadN;ic++) {//scan through all chunks, find the junctions equal to icOut-junction
+        for (int ic=0; ic<P.runThreadN; ic++) {//scan through all chunks, find the junctions equal to icOut-junction
             if (ic!=icOut && compareSJ((void*) sjChunks[ic], (void*) sjChunks[icOut])==0) {
                 oneSJ.collapseOneSJ(sjChunks[icOut],sjChunks[ic],P);//collapse ic-junction into icOut
                 sjChunks[ic] += oneSJ.dataSize;//shift ic-chunk by one junction
             };
         };
 
-        //write out the junction
-        oneSJ.junctionPointer(sjChunks[icOut], 0);//point to the icOut junction
-
-
-        // Overhang score querying
-        uint startOverhangLeft = *oneSJ.start + *oneSJ.gap;
-        uint startOverhangRight = *oneSJ.start - *oneSJ.overhangRight;
-        // now we need to consult the mappability scores using these positions
-        Genome G = RAchunk[0]->mapGen;
-        int32 ohLeftSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangLeft);
-        int32 ohRightSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(startOverhangRight);
-        int32 ohLeftLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangLeft);
-        int32 ohRightLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(startOverhangRight);
-
-        float ohLeftSmallMap = G.ratingsSmall.ratings[ohLeftSmallIntervalIdx];
-        float ohRightSmallMap = G.ratingsSmall.ratings[ohRightSmallIntervalIdx];
-        float ohLeftLargeMap = G.ratingsSmall.ratings[ohLeftLargeIntervalIdx];
-        float ohRightLargeMap = G.ratingsSmall.ratings[ohRightLargeIntervalIdx];
-
-        int32 distanceSmallLeft = abs(*oneSJ.overhangLeft - G.ratingsSmall.kmerSize);
-        int32 distanceLargeLeft = abs(*oneSJ.overhangLeft - G.ratingsLarge.kmerSize);
-        int32 distanceSmallRight = abs(*oneSJ.overhangRight - G.ratingsSmall.kmerSize);
-        int32 distanceLargeRight = abs(*oneSJ.overhangRight - G.ratingsLarge.kmerSize);
-
-        float smallWeightLeft = 1 - (distanceSmallLeft + (distanceLargeLeft + distanceSmallLeft));
-        float largeWeightLeft = 1 - (distanceLargeLeft + (distanceLargeLeft + distanceSmallLeft));
-        float smallWeightRight = 1 - (distanceSmallRight + (distanceLargeRight + distanceSmallRight));
-        float largeWeightRight = 1 - (distanceLargeRight + (distanceLargeRight + distanceSmallRight));
-
-        float mappabilityLeft = (smallWeightLeft * ohLeftSmallMap) + (largeWeightLeft * ohLeftLargeMap);
-        float mappabilityRight = (smallWeightRight * ohRightSmallMap) + (largeWeightRight * ohRightLargeMap);
-
-        int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
-        int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
-
-        bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= REDEMPTION_THRESHOLD);
-        bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= REDEMPTION_THRESHOLD);
-        bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= MAPPABILITY_THRESHOLD);
-        bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= MAPPABILITY_THRESHOLD);
+        // write out the junction - saves some info about the junction
+        oneSJ.junctionPointer(sjChunks[icOut], 0); //point to the icOut junction
 
 
         //filter the junction
+        bool isRedeemed = isSJRedeemed(oneSJ, P, RAchunk[0]->mapGen);
+        *oneSJ.isReedemed = isRedeemed;
         bool sjFilter;
         sjFilter = *oneSJ.annot > 0 \
                 || ( ( *oneSJ.countUnique >= (uint) P.outSJfilterCountUniqueMin[(*oneSJ.motif+1)/2] \
@@ -108,7 +114,7 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
                     However what we want is that if the overhang is smaller than the parameter however its mappability is high (1 or within a certain threshold) we output the splice junction
                     */
                 && ((*oneSJ.overhangLeft >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] \
-                && *oneSJ.overhangRight >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2]) || (isRedeemedLeft && isRedeemedRight)) \
+                && *oneSJ.overhangRight >= (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2]) || isRedeemed) \
                 && ( (*oneSJ.countMultiple + *oneSJ.countUnique) > P.outSJfilterIntronMaxVsReadN.size() || *oneSJ.gap <= (uint) P.outSJfilterIntronMaxVsReadN[*oneSJ.countMultiple+*oneSJ.countUnique-1]) );
 
         if (sjFilter) { //record the junction in all SJ
@@ -124,13 +130,16 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
                 allSJ.dataSizeIncrease();
                 P.inOut->logMain << "Increased the size of chunkOutSJ to " << allSJ.Nstore <<'\n';
             };
+            if (isRedeemed) {
+                P.inOut->logMain << "REDEEMED JUNCTION" << '\n';
+            }
         };
 
         sjChunks[icOut] += oneSJ.dataSize;//shift icOut-chunk by one junction
     };
 
     bool* sjFilter=new bool[allSJ.N];
-    if (P.outFilterBySJoutStage!=2) {
+    if (P.outFilterBySJoutStage != 2) {
         //filter non-canonical junctions that are close to canonical
         uint* sjA = new uint [allSJ.N*3];
         for (uint ii=0;ii<allSJ.N;ii++) {//scan through all junctions, filter by the donor ditance to a nearest donor, fill acceptor array
@@ -141,9 +150,9 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
             if (ii>0)         x1=*( (uint*)(allSJ.data+(ii-1)*oneSJ.dataSize) ); //previous junction donor
             if (ii+1<allSJ.N) x2=*( (uint*)(allSJ.data+(ii+1)*oneSJ.dataSize) ); //next junction donor
             uint minDist=min(*oneSJ.start-x1, x2-*oneSJ.start);
-            sjFilter[ii]= minDist >= (uint) P.outSJfilterDistToOtherSJmin[(*oneSJ.motif+1)/2];
-            sjA[ii*3]=*oneSJ.start+(uint)*oneSJ.gap;//acceptor
-            sjA[ii*3+1]=ii;
+            sjFilter[ii] = minDist >= (uint) P.outSJfilterDistToOtherSJmin[(*oneSJ.motif+1)/2];
+            sjA[ii*3] = *oneSJ.start+(uint)*oneSJ.gap;//acceptor
+            sjA[ii*3+1] = ii;
 
             if (*oneSJ.annot==0) {
                 sjA[ii*3+2]=*oneSJ.motif;
@@ -170,11 +179,11 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
     P.sjAll[0].reserve(allSJ.N);
     P.sjAll[1].reserve(allSJ.N);
 
-    if (P.outFilterBySJoutStage!=1) {//output file
+    if (P.outFilterBySJoutStage != 1) {//output file
         ofstream outSJfileStream((P.outFileNamePrefix+"SJ.out.tab").c_str());
         ofstream outSJtmpStream((P.outFileTmp+"SJ.start_gap.tsv").c_str());
-        for (uint ii=0;ii<allSJ.N;ii++) {//write to file
-            if ( P.outFilterBySJoutStage==2 || sjFilter[ii]  ) {
+        for (uint ii=0; ii<allSJ.N; ii++) {//write to file
+            if ( P.outFilterBySJoutStage == 2 || sjFilter[ii]  ) {
                 oneSJ.junctionPointer(allSJ.data,ii);
                 oneSJ.outputStream(outSJfileStream);//write to file
                 outSJtmpStream << *oneSJ.start <<'\t'<< *oneSJ.gap <<'\n';
@@ -185,21 +194,21 @@ void outputSJ(ReadAlignChunk** RAchunk, Parameters& P) {//collapses junctions fr
         outSJfileStream.close();
     } else {//make sjNovel array in P
         P.sjNovelN=0;
-        for (uint ii=0;ii<allSJ.N;ii++) {//count novel junctions
-            if (sjFilter[ii]) {//only those passing filter
+        for (uint ii=0;ii<allSJ.N;ii++) { //count novel junctions
+            if (sjFilter[ii]) { //only those passing filter
                 oneSJ.junctionPointer(allSJ.data,ii);
                 if (*oneSJ.annot==0) P.sjNovelN++;
             };
         };
         P.sjNovelStart = new uint [P.sjNovelN];
         P.sjNovelEnd = new uint [P.sjNovelN];
-        P.inOut->logMain <<"Detected " <<P.sjNovelN<<" novel junctions that passed filtering, will proceed to filter reads that contained unannotated junctions"<<endl;
+        P.inOut->logMain <<"Detected " << P.sjNovelN <<" novel junctions that passed filtering, will proceed to filter reads that contained unannotated junctions"<<endl;
 
         uint isj=0;
         for (uint ii=0;ii<allSJ.N;ii++) {//write to file
             if (sjFilter[ii]) {
                 oneSJ.junctionPointer(allSJ.data,ii);
-                if (*oneSJ.annot==0) {//unnnotated only
+                if (*oneSJ.annot == 0) {//unnnotated only
                     P.sjNovelStart[isj]=*oneSJ.start;
                     P.sjNovelEnd[isj]=*oneSJ.start+(uint)(*oneSJ.gap)-1;
                     isj++;

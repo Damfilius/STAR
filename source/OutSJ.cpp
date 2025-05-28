@@ -80,13 +80,14 @@ void Junction::junctionPointer(char* sjPoint, uint isj) {//
     countMultiple=(uint32*) (d1+countMultipleP);
     overhangLeft=(uint16*) (d1+overhangLeftP);
     overhangRight=(uint16*) (d1+overhangRightP);
+    isReedemed=(bool*) (d1+isReedemedP);
 };
 
 void Junction::outputStream(ostream &outStream) {
     uint sjChr=genOut.chrBin[*start >> genOut.pGe.gChrBinNbits];
     outStream << genOut.chrName.at(sjChr) <<"\t"<< *start + 1 - genOut.chrStart[sjChr] <<"\t"<<*start + *gap - genOut.chrStart[sjChr] \
             <<"\t"<< int(*strand) <<"\t"<< int(*motif) <<"\t"<< int (*annot) <<"\t"<< *countUnique <<"\t"<< *countMultiple \
-            <<"\t"<< *overhangLeft << endl;
+            <<"\t"<< *overhangLeft << "\t" << isReedemed << endl;
 };
 
 void Junction::collapseOneSJ(char* isj1P, char* isjP, Parameters& P) {//collapse isj junction into isj1: increase counts in isj1. choose max overhangs, motif, annot
