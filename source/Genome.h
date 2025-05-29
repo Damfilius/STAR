@@ -7,23 +7,66 @@
 #include "SharedMemory.h"
 #include "Variation.h"
 #include "SuperTranscriptome.h"
+#include <map>
+#include <tuple>
+#include <bits/stdc++.h>
+
 
 class GTF;
 
 typedef struct mappability {
-    vector<string> chrs;
-    vector<uint32> start;
-    vector<uint32> end;
-    vector<float> ratings;
+
+    std::map<std::string, std::vector<std::tuple<uint32, uint32, float>>> scoresByChr {};
     int32 kmerSize;
 
-    uint32 findIntervalIdx(string chr, uint32 startingPos) {
-        for (uint32 i = 0; i < start.size(); i++) {
-            if (chrs[i] == chr && startingPos >= start[i] && startingPos < end[i]) return i;
+    /// @brief inserts an entry into scoresByChr
+    /// @param chr chromosome name
+    /// @param start start position of the same-score kmers
+    /// @param end end position of the same-score kmers
+    /// @param mapScore mappability score
+    void insertEntry (std::string chr, uint32 start, uint32 end, float mapScore) {
+        auto entryTuple = std::make_tuple(start, end, mapScore);
+        scoresByChr[chr].push_back(entryTuple);
+    }
+
+    // https://www.geeksforgeeks.org/binary-search/
+    int binarySearch(std::vector<std::tuple<uint32, uint32, float>> arr, unsigned int low, unsigned int high, uint32 x) {
+        while (low <= high) {
+            int mid = low + (high - low) / 2;
+
+
+            if (x >= std::get<0>(arr[mid]) && x < std::get<1>(arr[mid]))
+                return mid;
+            else if (std::get<0>(arr[mid]) < x)
+                low = mid + 1;
+            else
+                high = mid - 1;
         }
 
         return -1;
     }
+
+    /// @brief returns the mappability score 
+    /// @param chr chromosome name
+    /// @param start start position of the kmer
+    /// @return respective mappability score
+    float getScore (std::string chr, uint32 start) {
+        auto searchContainer = scoresByChr[chr];
+        int idx = binarySearch(searchContainer, 0, searchContainer.size(), start);
+        if (idx == -1) return -1;
+        return std::get<2>(searchContainer[idx]);
+    }
+
+    size_t getSize() {
+        size_t sum = 0;
+        for (auto iter = scoresByChr.begin(); iter != scoresByChr.end(); ++iter) {
+            auto cur = iter->first; 
+            sum += scoresByChr[cur].size();
+        }
+
+        return sum;
+    }
+
 } mapRatings;
 
 class Genome {

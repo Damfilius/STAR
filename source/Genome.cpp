@@ -289,7 +289,7 @@ void Genome::mapInfoLoad(string& mapFilePath, mapRatings& mapInfo) {
     };
 
     mapStreamIn.close();
-    nMapRatings = mapInfo.start.size();
+    nMapRatings = mapInfo.getSize();
     P.inOut->logMain << "Number of base ratings = " << nMapRatings <<"\n"<<flush;
 }
 
@@ -324,8 +324,5 @@ void Genome::parseMapLine(string& line, mapRatings& mapInfo) {
     unsigned int end = std::stoul(params.at(2)); // second value corresponds to the interval end position
     float rating = std::stof(params.at(3)); // fourth value corresponds to the mappability score
 
-    mapInfo.chrs.push_back(chr);
-    mapInfo.start.push_back(start);
-    mapInfo.end.push_back(start);
-    mapInfo.ratings.push_back(rating);
+    mapInfo.insertEntry(chr, start, end, rating);
 }

@@ -8,47 +8,55 @@
 #define REDEMPTION_THRESHOLD 10 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
 #define MAPPABILITY_THRESHOLD 0.5 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
 
+float computeFinalScore(uint16 ohSize, uint16 smallKmerSize, uint16 largeKmerSize, float smallMap, float largeMap) {
+    // differences between the length of the overhang and the smaller and larger kmers
+    uint32 distanceSmall = abs(ohSize - smallKmerSize);
+    uint32 distanceLarge = abs(ohSize - largeKmerSize);
+
+    // computing weights based on differences
+    float smallWeight = 1 - (distanceSmall / (distanceSmall + distanceLarge));
+    float largeWeight = 1 - (distanceLarge / (distanceSmall + distanceLarge));
+
+    // computing final mappability scores
+    float mappability = (smallWeight * smallMap) + (largeWeight * largeMap);
+    return mappability;
+}
+
 bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
     if (G.pGe.mappabilityFileSmall == "" || G.pGe.mappabilityFileLarge == "") return false;
 
-    // Overhang score querying
+    // start positions of the right and left overhang
     uint32 startOverhangRight = *oneSJ.start + *oneSJ.gap;
     uint32 startOverhangLeft = *oneSJ.start - *oneSJ.overhangLeft;
 
+    // chromosome names of the right and left overhang
     uint chrRightIdx = G.chrBin[startOverhangRight >> G.pGe.gChrBinNbits];
     uint chrLeftIdx = G.chrBin[startOverhangLeft >> G.pGe.gChrBinNbits];
     string chrRight = G.chrName.at(chrRightIdx);
     string chrLeft = G.chrName.at(chrLeftIdx);
 
+    // chromosome starting positions of the right and left overhang
     uint32 ohChrRightStart = startOverhangRight + 1 - G.chrStart[chrRightIdx];
     uint32 ohChrLeftStart = startOverhangLeft + 1 - G.chrStart[chrLeftIdx];
 
-    uint32 ohLeftSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(chrLeft, ohChrLeftStart);
-    uint32 ohRightSmallIntervalIdx = G.ratingsSmall.findIntervalIdx(chrRight, ohChrRightStart);
-    uint32 ohLeftLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(chrLeft, ohChrLeftStart);
-    uint32 ohRightLargeIntervalIdx = G.ratingsLarge.findIntervalIdx(chrRight, ohChrRightStart);
+    // mappability scores of the right and left overhang
+    float rightOhScoreSmall = G.ratingsSmall.getScore(chrRight, ohChrRightStart);
+    float rightOhScoreLarge = G.ratingsLarge.getScore(chrRight, ohChrRightStart);
+    float leftOhScoreSmall = G.ratingsSmall.getScore(chrLeft, ohChrLeftStart);
+    float leftOhScoreLarge = G.ratingsLarge.getScore(chrLeft, ohChrLeftStart);
 
     // cannot find the associated mapability score so just return false
-    if (ohLeftSmallIntervalIdx == -1 || ohRightSmallIntervalIdx == -1 || ohLeftLargeIntervalIdx == - 1 || ohRightLargeIntervalIdx == -1) return false;
+    if (rightOhScoreLarge == -1 || rightOhScoreSmall == -1 || leftOhScoreLarge == - 1 || leftOhScoreSmall== -1) {
+        ostringstream errOut;
+        errOut <<"EXITING Could not find mapability score for chr: " << chrLeft << " " << ohChrRightStart << " and " << chrRight << " " << ohChrLeftStart << "\n";
+        exitWithError(errOut.str(),std::cerr, P.inOut->logMain, EXIT_CODE_INPUT_FILES, P);
+    } 
 
-    float ohLeftSmallMap = G.ratingsSmall.ratings[ohLeftSmallIntervalIdx];
-    float ohRightSmallMap = G.ratingsSmall.ratings[ohRightSmallIntervalIdx];
-    float ohLeftLargeMap = G.ratingsSmall.ratings[ohLeftLargeIntervalIdx];
-    float ohRightLargeMap = G.ratingsSmall.ratings[ohRightLargeIntervalIdx];
+    // computing the mapabilities
+    float mappabilityLeft = computeFinalScore(*oneSJ.overhangLeft, G.ratingsSmall.kmerSize, G.ratingsLarge.kmerSize, leftOhScoreSmall, leftOhScoreLarge);
+    float mappabilityRight = computeFinalScore(*oneSJ.overhangLeft, G.ratingsSmall.kmerSize, G.ratingsLarge.kmerSize, leftOhScoreSmall, leftOhScoreLarge);
 
-    uint32 distanceSmallLeft = abs(*oneSJ.overhangLeft - G.ratingsSmall.kmerSize);
-    uint32 distanceLargeLeft = abs(*oneSJ.overhangLeft - G.ratingsLarge.kmerSize);
-    uint32 distanceSmallRight = abs(*oneSJ.overhangRight - G.ratingsSmall.kmerSize);
-    uint32 distanceLargeRight = abs(*oneSJ.overhangRight - G.ratingsLarge.kmerSize);
-
-    float smallWeightLeft = 1 - (distanceSmallLeft / (distanceLargeLeft + distanceSmallLeft));
-    float largeWeightLeft = 1 - (distanceLargeLeft / (distanceLargeLeft + distanceSmallLeft));
-    float smallWeightRight = 1 - (distanceSmallRight / (distanceLargeRight + distanceSmallRight));
-    float largeWeightRight = 1 - (distanceLargeRight / (distanceLargeRight + distanceSmallRight));
-
-    float mappabilityLeft = (smallWeightLeft * ohLeftSmallMap) + (largeWeightLeft * ohLeftLargeMap);
-    float mappabilityRight = (smallWeightRight * ohRightSmallMap) + (largeWeightRight * ohRightLargeMap);
-
+    // computing the difference in length between the overhang and the minimum allowed overhang
     int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
     int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
 
