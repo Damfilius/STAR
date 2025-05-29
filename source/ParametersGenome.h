@@ -22,6 +22,8 @@ public:
     string mappabilityFileLarge; // string contains file path to the mappabiility file with large kmer size
     int32  kmerSizeSmall; // size of the smaller kmer
     int32  kmerSizeLarge; // size of the larger kmer
+    uint16 redemptionThreshold;
+    float mappabilityThreshold;
 
     //string gConsensusFile; DEPRECATED
 

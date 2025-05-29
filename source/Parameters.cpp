@@ -57,6 +57,8 @@ Parameters::Parameters() {//initalize parameters info
     parArray.push_back(new ParameterInfoScalar <string> (-1, -1, "genomeMapbltyLarge", &pGe.mappabilityFileLarge));
     parArray.push_back(new ParameterInfoScalar <int> (-1, -1, "mappabilityKmerSmall", &pGe.kmerSizeSmall));
     parArray.push_back(new ParameterInfoScalar <int> (-1, -1, "mappabilityKmerLarge", &pGe.kmerSizeLarge));
+    parArray.push_back(new ParameterInfoScalar <uint16> (-1, -1, "redemptionT", &pGe.redemptionThreshold));
+    parArray.push_back(new ParameterInfoScalar <float> (-1, -1, "mpbltyT", &pGe.mappabilityThreshold));
 
     //read
     parArray.push_back(new ParameterInfoVector <string> (-1, -1, "readFilesType", &readFilesType));

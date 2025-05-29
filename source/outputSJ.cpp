@@ -5,8 +5,8 @@
 #include "ErrorWarning.h"
 #include <stdlib.h>
 
-#define REDEMPTION_THRESHOLD 10 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
-#define MAPPABILITY_THRESHOLD 0.5 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
+// #define REDEMPTION_THRESHOLD 10 // defines the maximum difference in lengths between the overhang and the min allowable overhang length for which we consider redemption
+// #define MAPPABILITY_THRESHOLD 0.5 // SJs overhangs that fall within the redemption threshold have to have a mappability >= MAPPABILITY_THRESHOLD to be output
 
 float computeFinalScore(uint16 ohSize, uint16 smallKmerSize, uint16 largeKmerSize, float smallMap, float largeMap) {
     // differences between the length of the overhang and the smaller and larger kmers
@@ -60,11 +60,11 @@ bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
     int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
     int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
 
-    bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= REDEMPTION_THRESHOLD);
-    bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= REDEMPTION_THRESHOLD);
+    bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= P.pGe.redemptionThreshold);
+    bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= P.pGe.redemptionThreshold);
 
-    bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= MAPPABILITY_THRESHOLD);
-    bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= MAPPABILITY_THRESHOLD);
+    bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= P.pGe.mappabilityThreshold);
+    bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= P.pGe.mappabilityThreshold);
 
     return isRedeemedLeft && isRedeemedRight;
 }

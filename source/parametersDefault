@@ -540,6 +540,10 @@ mappabilityKmerSmall 20
 
 mappabilityKmerLarge 30
 
+redemptionT 5
+
+mpbltyT 0.7
+
 ### Scoring
 scoreGap                     0
     int: splice junction penalty (independent on intron motif)
