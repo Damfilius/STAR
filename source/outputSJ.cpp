@@ -25,6 +25,15 @@ float computeFinalScore(uint16 ohSize, uint16 smallKmerSize, uint16 largeKmerSiz
 bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
     if (G.pGe.mappabilityFileSmall == "" || G.pGe.mappabilityFileLarge == "") return false;
 
+    // computing the difference in length between the overhang and the minimum allowed overhang
+    int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
+    int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
+
+    bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= P.pGe.redemptionThreshold);
+    bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= P.pGe.redemptionThreshold);
+
+    if (!redemptionFlagLeft || !redemptionFlagRight) return false;
+
     // start positions of the right and left overhang
     uint32 startOverhangRight = *oneSJ.start + *oneSJ.gap;
     uint32 startOverhangLeft = *oneSJ.start - *oneSJ.overhangLeft;
@@ -55,13 +64,6 @@ bool isSJRedeemed(Junction& oneSJ, Parameters& P, Genome& G) {
     // computing the mapabilities
     float mappabilityLeft = computeFinalScore(*oneSJ.overhangLeft, G.ratingsSmall.kmerSize, G.ratingsLarge.kmerSize, leftOhScoreSmall, leftOhScoreLarge);
     float mappabilityRight = computeFinalScore(*oneSJ.overhangLeft, G.ratingsSmall.kmerSize, G.ratingsLarge.kmerSize, leftOhScoreSmall, leftOhScoreLarge);
-
-    // computing the difference in length between the overhang and the minimum allowed overhang
-    int32 leftDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangLeft;
-    int32 rightDiff = (uint) P.outSJfilterOverhangMin[(*oneSJ.motif+1)/2] - *oneSJ.overhangRight;
-
-    bool redemptionFlagLeft = (leftDiff > 0) && (leftDiff <= P.pGe.redemptionThreshold);
-    bool redemptionFlagRight = (rightDiff > 0) && (rightDiff <= P.pGe.redemptionThreshold);
 
     bool isRedeemedLeft = redemptionFlagLeft && (mappabilityLeft >= P.pGe.mappabilityThreshold);
     bool isRedeemedRight = redemptionFlagRight && (mappabilityRight >= P.pGe.mappabilityThreshold);
